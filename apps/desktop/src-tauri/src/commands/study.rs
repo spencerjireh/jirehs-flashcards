@@ -1,7 +1,7 @@
 //! Study session Tauri commands.
 
 use crate::db::{
-    CardRepository, PendingReview, SettingsRepository, StateRepository, SyncRepository,
+    CardRepository, Review, SettingsRepository, StateRepository,
 };
 use crate::state::AppState;
 use chrono::Utc;
@@ -89,8 +89,8 @@ pub async fn submit_review(
     // Save new state
     repo.save_card_state(request.card_id, &result.new_state)?;
 
-    // Save to pending_reviews for sync
-    let pending_review = PendingReview {
+    // Save review record
+    let review = Review {
         id: 0, // Will be assigned by database
         card_id: request.card_id,
         reviewed_at: now.to_rfc3339(),
@@ -106,8 +106,7 @@ pub async fn submit_review(
         ease_after: result.new_state.ease_factor,
         algorithm: algorithm_name.to_string(),
     };
-    repo.insert_pending_review(&pending_review)?;
-    repo.increment_pending_changes()?;
+    repo.insert_review(&review)?;
 
     Ok(ReviewResponse {
         new_state: result.new_state,

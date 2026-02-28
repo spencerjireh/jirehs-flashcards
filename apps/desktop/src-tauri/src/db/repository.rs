@@ -17,7 +17,6 @@ pub trait CardRepository {
     fn get_card(&self, id: i64) -> Result<Option<Card>>;
     fn get_cards_by_deck(&self, deck_path: &str) -> Result<Vec<Card>>;
     fn upsert_cards(&self, cards: &[Card]) -> Result<()>;
-    fn upsert_cards_from_sync(&self, cards: &[Card], synced_at: &str) -> Result<usize>;
     fn delete_cards(&self, ids: &[i64]) -> Result<()>;
     fn get_new_cards(&self, deck_path: Option<&str>, limit: usize) -> Result<Vec<Card>>;
     fn get_due_cards(
@@ -32,7 +31,6 @@ pub trait CardRepository {
 pub trait StateRepository {
     fn get_card_state(&self, card_id: i64) -> Result<Option<CardState>>;
     fn save_card_state(&self, card_id: i64, state: &CardState) -> Result<()>;
-    fn save_card_states_synced(&self, states: &[(i64, CardState)]) -> Result<usize>;
 }
 
 /// Repository for deck operations.
@@ -79,9 +77,9 @@ pub struct CalendarData {
     pub reviews: usize,
 }
 
-/// Pending review record for sync.
+/// Review record.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct PendingReview {
+pub struct Review {
     pub id: i64,
     pub card_id: i64,
     pub reviewed_at: String,
@@ -96,45 +94,6 @@ pub struct PendingReview {
     pub ease_before: f64,
     pub ease_after: f64,
     pub algorithm: String,
-}
-
-/// MD file sync info.
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct MdFileInfo {
-    pub file_path: String,
-    pub content_hash: String,
-    pub last_modified: String,
-}
-
-/// Local sync state.
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct LocalSyncState {
-    pub last_sync_at: Option<String>,
-    pub pending_changes: i32,
-}
-
-/// Device info.
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct LocalDeviceInfo {
-    pub token: String,
-    pub device_id: Option<String>,
-}
-
-/// Repository for sync operations.
-pub trait SyncRepository {
-    fn get_pending_reviews(&self) -> Result<Vec<PendingReview>>;
-    fn mark_reviews_synced(&self, ids: &[i64]) -> Result<()>;
-    fn insert_pending_review(&self, review: &PendingReview) -> Result<i64>;
-    fn get_pending_files(&self) -> Result<Vec<MdFileInfo>>;
-    fn update_file_hash(&self, path: &str, hash: &str, last_modified: &str) -> Result<()>;
-    fn mark_file_pending(&self, path: &str) -> Result<()>;
-    fn clear_pending_upload(&self, path: &str) -> Result<()>;
-    fn get_sync_state(&self) -> Result<LocalSyncState>;
-    fn update_sync_state(&self, last_sync_at: &str) -> Result<()>;
-    fn increment_pending_changes(&self) -> Result<()>;
-    fn reset_pending_changes(&self) -> Result<()>;
-    fn get_device_token(&self) -> Result<Option<LocalDeviceInfo>>;
-    fn save_device_token(&self, token: &str, device_id: &str) -> Result<()>;
 }
 
 /// Repository for statistics operations.
@@ -169,7 +128,6 @@ impl SqliteRepository {
     fn initialize(&self) -> Result<()> {
         self.conn.execute_batch(super::schema::SCHEMA)?;
         self.conn.execute_batch(super::schema::INIT_GLOBAL_SETTINGS)?;
-        self.conn.execute_batch(super::schema::INIT_SYNC_STATE)?;
         Ok(())
     }
 
@@ -211,6 +169,32 @@ impl SqliteRepository {
             params![now, source_file],
         )?;
         Ok(count)
+    }
+
+    /// Insert a review record.
+    pub fn insert_review(&self, review: &Review) -> Result<i64> {
+        self.conn.execute(
+            "INSERT INTO reviews (card_id, reviewed_at, rating, rating_scale, answer_mode,
+                typed_answer, was_correct, time_taken_ms, interval_before, interval_after,
+                ease_before, ease_after, algorithm)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+            params![
+                review.card_id,
+                review.reviewed_at,
+                review.rating,
+                review.rating_scale,
+                review.answer_mode,
+                review.typed_answer,
+                review.was_correct.map(|b| if b { 1 } else { 0 }),
+                review.time_taken_ms,
+                review.interval_before,
+                review.interval_after,
+                review.ease_before,
+                review.ease_after,
+                review.algorithm,
+            ],
+        )?;
+        Ok(self.conn.last_insert_rowid())
     }
 }
 
@@ -275,27 +259,6 @@ impl CardRepository for SqliteRepository {
             )?;
         }
         Ok(())
-    }
-
-    fn upsert_cards_from_sync(&self, cards: &[Card], synced_at: &str) -> Result<usize> {
-        let mut count = 0;
-        for card in cards {
-            let deleted_at_str = card.deleted_at.map(|d| d.to_rfc3339());
-            self.conn.execute(
-                "INSERT OR REPLACE INTO cards (id, deck_path, question_text, answer_text, source_file, deleted_at, synced_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                params![card.id, card.deck_path, card.question, card.answer, card.source_file, deleted_at_str, synced_at],
-            )?;
-
-            // Initialize card state if not exists
-            self.conn.execute(
-                "INSERT OR IGNORE INTO card_states (card_id) VALUES (?1)",
-                params![card.id],
-            )?;
-
-            count += 1;
-        }
-        Ok(count)
     }
 
     fn get_new_cards(&self, deck_path: Option<&str>, limit: usize) -> Result<Vec<Card>> {
@@ -412,31 +375,10 @@ impl StateRepository for SqliteRepository {
         let due_str = state.due_date.map(|d| d.to_rfc3339());
 
         self.conn.execute(
-            "INSERT OR REPLACE INTO card_states (card_id, status, interval_days, ease_factor, due_date, stability, difficulty, lapses, reviews_count, synced) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0)",
+            "INSERT OR REPLACE INTO card_states (card_id, status, interval_days, ease_factor, due_date, stability, difficulty, lapses, reviews_count) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![card_id, status_str, state.interval_days, state.ease_factor, due_str, state.stability, state.difficulty, state.lapses, state.reviews_count],
         )?;
         Ok(())
-    }
-
-    fn save_card_states_synced(&self, states: &[(i64, CardState)]) -> Result<usize> {
-        let mut count = 0;
-        for (card_id, state) in states {
-            let status_str = match state.status {
-                CardStatus::New => "new",
-                CardStatus::Learning => "learning",
-                CardStatus::Review => "review",
-                CardStatus::Relearning => "relearning",
-            };
-            let due_str = state.due_date.map(|d| d.to_rfc3339());
-
-            self.conn.execute(
-                "INSERT OR REPLACE INTO card_states (card_id, status, interval_days, ease_factor, due_date, stability, difficulty, lapses, reviews_count, synced)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 1)",
-                params![card_id, status_str, state.interval_days, state.ease_factor, due_str, state.stability, state.difficulty, state.lapses, state.reviews_count],
-            )?;
-            count += 1;
-        }
-        Ok(count)
     }
 }
 
@@ -544,7 +486,7 @@ impl SettingsRepository for SqliteRepository {
         };
 
         self.conn.execute(
-            "UPDATE global_settings SET algorithm = ?1, rating_scale = ?2, matching_mode = ?3, fuzzy_threshold = ?4, new_cards_per_day = ?5, reviews_per_day = ?6, daily_reset_hour = ?7, synced = 0 WHERE id = 1",
+            "UPDATE global_settings SET algorithm = ?1, rating_scale = ?2, matching_mode = ?3, fuzzy_threshold = ?4, new_cards_per_day = ?5, reviews_per_day = ?6, daily_reset_hour = ?7 WHERE id = 1",
             params![
                 algorithm_str,
                 rating_scale_str,
@@ -605,7 +547,7 @@ impl SettingsRepository for SqliteRepository {
         });
 
         self.conn.execute(
-            "INSERT OR REPLACE INTO deck_settings (deck_path, algorithm, rating_scale, matching_mode, fuzzy_threshold, new_cards_per_day, reviews_per_day, synced) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0)",
+            "INSERT OR REPLACE INTO deck_settings (deck_path, algorithm, rating_scale, matching_mode, fuzzy_threshold, new_cards_per_day, reviews_per_day) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
                 settings.deck_path,
                 algorithm_str,
@@ -635,44 +577,6 @@ impl SettingsRepository for SqliteRepository {
             None => None,
         };
         Ok(EffectiveSettings::merge(&global, deck.as_ref()))
-    }
-}
-
-use crate::sync::{ApiDeckSettings, ApiGlobalSettings};
-
-impl SqliteRepository {
-    /// Save global settings from cloud sync (marks as synced).
-    pub fn save_global_settings_synced(&self, settings: &ApiGlobalSettings) -> Result<()> {
-        self.conn.execute(
-            "UPDATE global_settings SET algorithm = ?1, rating_scale = ?2, matching_mode = ?3, fuzzy_threshold = ?4, new_cards_per_day = ?5, reviews_per_day = ?6, daily_reset_hour = ?7, synced = 1 WHERE id = 1",
-            params![
-                settings.algorithm,
-                settings.rating_scale,
-                settings.matching_mode,
-                settings.fuzzy_threshold,
-                settings.new_cards_per_day,
-                settings.reviews_per_day,
-                settings.daily_reset_hour,
-            ],
-        )?;
-        Ok(())
-    }
-
-    /// Save deck settings from cloud sync (marks as synced).
-    pub fn save_deck_settings_synced(&self, settings: &ApiDeckSettings) -> Result<()> {
-        self.conn.execute(
-            "INSERT OR REPLACE INTO deck_settings (deck_path, algorithm, rating_scale, matching_mode, fuzzy_threshold, new_cards_per_day, reviews_per_day, synced) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1)",
-            params![
-                settings.deck_path,
-                settings.algorithm,
-                settings.rating_scale,
-                settings.matching_mode,
-                settings.fuzzy_threshold,
-                settings.new_cards_per_day,
-                settings.reviews_per_day,
-            ],
-        )?;
-        Ok(())
     }
 }
 
@@ -743,14 +647,14 @@ impl StatsRepository for SqliteRepository {
 
         // Get today's review count
         let reviews_today: usize = self.conn.query_row(
-            "SELECT COUNT(*) FROM pending_reviews WHERE date(reviewed_at) = ?1",
+            "SELECT COUNT(*) FROM reviews WHERE date(reviewed_at) = ?1",
             params![today],
             |row| row.get(0),
         ).unwrap_or(0);
 
         // Get today's new cards seen (cards that were 'new' status and got reviewed today)
         let new_today: usize = self.conn.query_row(
-            "SELECT COUNT(DISTINCT card_id) FROM pending_reviews
+            "SELECT COUNT(DISTINCT card_id) FROM reviews
              WHERE date(reviewed_at) = ?1",
             params![today],
             |row| row.get(0),
@@ -758,7 +662,7 @@ impl StatsRepository for SqliteRepository {
 
         // Get total reviews
         let total_reviews: usize = self.conn.query_row(
-            "SELECT COUNT(*) FROM pending_reviews",
+            "SELECT COUNT(*) FROM reviews",
             [],
             |row| row.get(0),
         ).unwrap_or(0);
@@ -770,7 +674,7 @@ impl StatsRepository for SqliteRepository {
         loop {
             let date_str = current_date.format("%Y-%m-%d").to_string();
             let count: usize = self.conn.query_row(
-                "SELECT COUNT(*) FROM pending_reviews WHERE date(reviewed_at) = ?1",
+                "SELECT COUNT(*) FROM reviews WHERE date(reviewed_at) = ?1",
                 params![date_str],
                 |row| row.get(0),
             ).unwrap_or(0);
@@ -797,7 +701,7 @@ impl StatsRepository for SqliteRepository {
                 CAST(SUM(CASE WHEN rating >= 3 THEN 1 ELSE 0 END) AS REAL) /
                 NULLIF(COUNT(*), 0),
                 0.0
-            ) FROM pending_reviews",
+            ) FROM reviews",
             [],
             |row| row.get(0),
         ).unwrap_or(0.0);
@@ -820,7 +724,7 @@ impl StatsRepository for SqliteRepository {
             let date_str = date.format("%Y-%m-%d").to_string();
 
             let reviews: usize = self.conn.query_row(
-                "SELECT COUNT(*) FROM pending_reviews WHERE date(reviewed_at) = ?1",
+                "SELECT COUNT(*) FROM reviews WHERE date(reviewed_at) = ?1",
                 params![date_str],
                 |row| row.get(0),
             ).unwrap_or(0);
@@ -834,205 +738,5 @@ impl StatsRepository for SqliteRepository {
         // Reverse so oldest is first
         data.reverse();
         Ok(data)
-    }
-}
-
-impl SyncRepository for SqliteRepository {
-    fn get_pending_reviews(&self) -> Result<Vec<PendingReview>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, card_id, reviewed_at, rating, rating_scale, answer_mode, typed_answer,
-                    was_correct, time_taken_ms, interval_before, interval_after,
-                    ease_before, ease_after, algorithm
-             FROM pending_reviews WHERE synced = 0",
-        )?;
-
-        let reviews = stmt
-            .query_map([], |row| {
-                Ok(PendingReview {
-                    id: row.get(0)?,
-                    card_id: row.get(1)?,
-                    reviewed_at: row.get(2)?,
-                    rating: row.get(3)?,
-                    rating_scale: row.get(4)?,
-                    answer_mode: row.get(5)?,
-                    typed_answer: row.get(6)?,
-                    was_correct: row.get::<_, Option<i32>>(7)?.map(|v| v != 0),
-                    time_taken_ms: row.get(8)?,
-                    interval_before: row.get(9)?,
-                    interval_after: row.get(10)?,
-                    ease_before: row.get(11)?,
-                    ease_after: row.get(12)?,
-                    algorithm: row.get(13)?,
-                })
-            })?
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-
-        Ok(reviews)
-    }
-
-    fn mark_reviews_synced(&self, ids: &[i64]) -> Result<()> {
-        if ids.is_empty() {
-            return Ok(());
-        }
-
-        let placeholders: String = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-        let sql = format!("UPDATE pending_reviews SET synced = 1 WHERE id IN ({})", placeholders);
-
-        let mut stmt = self.conn.prepare(&sql)?;
-        let params: Vec<&dyn rusqlite::ToSql> = ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
-        stmt.execute(params.as_slice())?;
-
-        Ok(())
-    }
-
-    fn insert_pending_review(&self, review: &PendingReview) -> Result<i64> {
-        self.conn.execute(
-            "INSERT INTO pending_reviews (card_id, reviewed_at, rating, rating_scale, answer_mode,
-                typed_answer, was_correct, time_taken_ms, interval_before, interval_after,
-                ease_before, ease_after, algorithm, synced)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 0)",
-            params![
-                review.card_id,
-                review.reviewed_at,
-                review.rating,
-                review.rating_scale,
-                review.answer_mode,
-                review.typed_answer,
-                review.was_correct.map(|b| if b { 1 } else { 0 }),
-                review.time_taken_ms,
-                review.interval_before,
-                review.interval_after,
-                review.ease_before,
-                review.ease_after,
-                review.algorithm,
-            ],
-        )?;
-        Ok(self.conn.last_insert_rowid())
-    }
-
-    fn get_pending_files(&self) -> Result<Vec<MdFileInfo>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT file_path, content_hash, last_modified FROM md_files WHERE pending_upload = 1",
-        )?;
-
-        let files = stmt
-            .query_map([], |row| {
-                Ok(MdFileInfo {
-                    file_path: row.get(0)?,
-                    content_hash: row.get(1)?,
-                    last_modified: row.get(2)?,
-                })
-            })?
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-
-        Ok(files)
-    }
-
-    fn update_file_hash(&self, path: &str, hash: &str, last_modified: &str) -> Result<()> {
-        self.conn.execute(
-            "INSERT OR REPLACE INTO md_files (file_path, content_hash, last_modified, pending_upload)
-             VALUES (?1, ?2, ?3, 0)",
-            params![path, hash, last_modified],
-        )?;
-        Ok(())
-    }
-
-    fn mark_file_pending(&self, path: &str) -> Result<()> {
-        // First check if file exists, update if so, otherwise insert
-        let existing: Option<String> = self.conn
-            .query_row(
-                "SELECT file_path FROM md_files WHERE file_path = ?1",
-                params![path],
-                |row| row.get(0),
-            )
-            .optional()?;
-
-        if existing.is_some() {
-            self.conn.execute(
-                "UPDATE md_files SET pending_upload = 1 WHERE file_path = ?1",
-                params![path],
-            )?;
-        } else {
-            let now = Utc::now().to_rfc3339();
-            self.conn.execute(
-                "INSERT INTO md_files (file_path, content_hash, last_modified, pending_upload)
-                 VALUES (?1, '', ?2, 1)",
-                params![path, now],
-            )?;
-        }
-        Ok(())
-    }
-
-    fn clear_pending_upload(&self, path: &str) -> Result<()> {
-        self.conn.execute(
-            "UPDATE md_files SET pending_upload = 0 WHERE file_path = ?1",
-            params![path],
-        )?;
-        Ok(())
-    }
-
-    fn get_sync_state(&self) -> Result<LocalSyncState> {
-        self.conn
-            .query_row(
-                "SELECT last_sync_at, pending_changes FROM sync_state WHERE id = 1",
-                [],
-                |row| {
-                    Ok(LocalSyncState {
-                        last_sync_at: row.get(0)?,
-                        pending_changes: row.get(1)?,
-                    })
-                },
-            )
-            .map_err(Into::into)
-    }
-
-    fn update_sync_state(&self, last_sync_at: &str) -> Result<()> {
-        self.conn.execute(
-            "UPDATE sync_state SET last_sync_at = ?1, pending_changes = 0 WHERE id = 1",
-            params![last_sync_at],
-        )?;
-        Ok(())
-    }
-
-    fn increment_pending_changes(&self) -> Result<()> {
-        self.conn.execute(
-            "UPDATE sync_state SET pending_changes = pending_changes + 1 WHERE id = 1",
-            [],
-        )?;
-        Ok(())
-    }
-
-    fn reset_pending_changes(&self) -> Result<()> {
-        self.conn.execute(
-            "UPDATE sync_state SET pending_changes = 0 WHERE id = 1",
-            [],
-        )?;
-        Ok(())
-    }
-
-    fn get_device_token(&self) -> Result<Option<LocalDeviceInfo>> {
-        self.conn
-            .query_row(
-                "SELECT token, device_id FROM local_device LIMIT 1",
-                [],
-                |row| {
-                    Ok(LocalDeviceInfo {
-                        token: row.get(0)?,
-                        device_id: row.get(1)?,
-                    })
-                },
-            )
-            .optional()
-            .map_err(Into::into)
-    }
-
-    fn save_device_token(&self, token: &str, device_id: &str) -> Result<()> {
-        // Clear existing and insert new
-        self.conn.execute("DELETE FROM local_device", [])?;
-        self.conn.execute(
-            "INSERT INTO local_device (token, device_id) VALUES (?1, ?2)",
-            params![token, device_id],
-        )?;
-        Ok(())
     }
 }

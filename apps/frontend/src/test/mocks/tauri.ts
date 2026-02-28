@@ -14,12 +14,6 @@ import type {
   StudyQueue,
   StudyStats,
 } from '@jirehs-flashcards/shared-types';
-import type {
-  DeviceInfo,
-  LocalSyncState,
-  SyncStats,
-  SyncStatus,
-} from '../../lib/tauri';
 
 // Default mock return values
 export const mockDefaults = {
@@ -69,12 +63,6 @@ export const mockDefaults = {
   } as StudyStats,
   calendarData: [] as CalendarData[],
   watchedDirectories: [] as string[],
-  syncStatus: { type: 'Idle' } as SyncStatus,
-  deviceInfo: null as DeviceInfo | null,
-  localSyncState: {
-    last_sync_at: null,
-    pending_changes: 0,
-  } as LocalSyncState,
   importResult: {
     imported: 0,
     deck_path: '',
@@ -131,40 +119,20 @@ export const mockTauriCommands = {
   start_watching: vi.fn(() => Promise.resolve()),
   stop_watching: vi.fn(() => Promise.resolve()),
   get_watched_directories: vi.fn(() => Promise.resolve(mockDefaults.watchedDirectories)),
-
-  // Sync commands
-  start_sync: vi.fn(() => Promise.resolve(mockDefaults.syncStatus)),
-  get_sync_status: vi.fn(() => Promise.resolve(mockDefaults.syncStatus)),
-  cancel_sync: vi.fn(() => Promise.resolve()),
-  confirm_orphan_deletion: vi.fn(() => Promise.resolve(0)),
-  skip_orphan_deletion: vi.fn(() =>
-    Promise.resolve({
-      files_uploaded: 0,
-      cards_created: 0,
-      cards_updated: 0,
-      orphans_deleted: 0,
-      reviews_synced: 0,
-      states_pulled: 0,
-    } as SyncStats)
-  ),
-  register_device: vi.fn(() => Promise.resolve(mockDefaults.deviceInfo)),
-  get_device_status: vi.fn(() => Promise.resolve(mockDefaults.deviceInfo)),
-  check_connectivity: vi.fn(() => Promise.resolve(true)),
-  get_local_sync_state: vi.fn(() => Promise.resolve(mockDefaults.localSyncState)),
 };
 
 // Setup invoke mock to route to correct command mock
-export function setupTauriMock() {
+export async function setupTauriMock() {
   const { invoke } = vi.mocked(await import('@tauri-apps/api/core'));
 
-  invoke.mockImplementation((cmd: string, args?: Record<string, unknown>) => {
+  invoke.mockImplementation(((cmd: string) => {
     const mockFn = mockTauriCommands[cmd as keyof typeof mockTauriCommands];
     if (mockFn) {
-      return mockFn(args);
+      return mockFn();
     }
     console.warn(`Unmocked Tauri command: ${cmd}`);
     return Promise.reject(new Error(`Unmocked Tauri command: ${cmd}`));
-  });
+  }) as typeof invoke);
 }
 
 // Helper to reset all mocks to defaults

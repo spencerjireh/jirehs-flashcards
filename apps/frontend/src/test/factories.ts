@@ -12,13 +12,6 @@ import type {
   StudyQueue,
   StudyStats,
 } from '@jirehs-flashcards/shared-types';
-import type {
-  DeviceInfo,
-  LocalSyncState,
-  OrphanInfo,
-  SyncStats,
-  SyncStatus,
-} from '../lib/tauri';
 
 let idCounter = 1;
 
@@ -190,88 +183,6 @@ export function createMockDiffSegment(
   return {
     text: 'text',
     diff_type: 'Same',
-    ...overrides,
-  };
-}
-
-// Sync status factory
-export function createMockSyncStatus(
-  type: SyncStatus['type'] = 'Idle',
-  overrides: Partial<Omit<SyncStatus, 'type'>> = {}
-): SyncStatus {
-  const base: SyncStatus = { type };
-
-  switch (type) {
-    case 'Syncing':
-      return {
-        ...base,
-        stage: { name: 'Connecting' },
-        progress: 0,
-        ...overrides,
-      };
-    case 'AwaitingOrphanConfirmation':
-      return {
-        ...base,
-        orphans: [],
-        ...overrides,
-      };
-    case 'Completed':
-      return {
-        ...base,
-        synced_at: new Date().toISOString(),
-        stats: createMockSyncStats(),
-        ...overrides,
-      };
-    case 'Failed':
-      return {
-        ...base,
-        error: 'Sync failed',
-        ...overrides,
-      };
-    default:
-      return { ...base, ...overrides };
-  }
-}
-
-// Sync stats factory
-export function createMockSyncStats(overrides: Partial<SyncStats> = {}): SyncStats {
-  return {
-    files_uploaded: 0,
-    cards_created: 0,
-    cards_updated: 0,
-    orphans_deleted: 0,
-    reviews_synced: 0,
-    states_pulled: 0,
-    ...overrides,
-  };
-}
-
-// Orphan info factory
-export function createMockOrphanInfo(overrides: Partial<OrphanInfo> = {}): OrphanInfo {
-  const id = nextId();
-  return {
-    card_id: id,
-    question_preview: `Orphaned question ${id}?`,
-    ...overrides,
-  };
-}
-
-// Device info factory
-export function createMockDeviceInfo(overrides: Partial<DeviceInfo> = {}): DeviceInfo {
-  return {
-    token: 'test-token-123',
-    device_id: 'device-123',
-    ...overrides,
-  };
-}
-
-// Local sync state factory
-export function createMockLocalSyncState(
-  overrides: Partial<LocalSyncState> = {}
-): LocalSyncState {
-  return {
-    last_sync_at: null,
-    pending_changes: 0,
     ...overrides,
   };
 }

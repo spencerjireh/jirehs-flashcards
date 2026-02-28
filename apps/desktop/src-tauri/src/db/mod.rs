@@ -7,7 +7,6 @@ pub mod schema;
 
 pub use error::DbError;
 pub use repository::{
-    CalendarData, CardRepository, DeckRepository, DeckStats, LocalDeviceInfo, LocalSyncState,
-    MdFileInfo, PendingReview, SettingsRepository, SqliteRepository, StateRepository,
-    StatsRepository, StudyStats, SyncRepository,
+    CalendarData, CardRepository, DeckRepository, DeckStats, Review, SettingsRepository,
+    SqliteRepository, StateRepository, StatsRepository, StudyStats,
 };

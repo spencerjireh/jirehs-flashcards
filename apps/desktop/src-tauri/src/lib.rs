@@ -2,7 +2,6 @@ mod commands;
 mod db;
 mod parser;
 mod state;
-mod sync;
 mod watcher;
 
 use commands::deck::{get_deck, import_directory, import_file, list_decks};
@@ -12,12 +11,7 @@ use commands::settings::{
 };
 use commands::stats::{get_calendar_data, get_deck_stats, get_study_stats};
 use commands::study::{compare_typed_answer, get_card, get_card_state, get_study_queue, submit_review};
-use commands::sync::{
-    cancel_sync, check_connectivity, confirm_orphan_deletion, get_device_status,
-    get_local_sync_state, get_sync_status, register_device, skip_orphan_deletion, start_sync,
-};
 use commands::watcher::{get_watched_directories, start_watching, stop_watching};
-use commands::SyncEngineState;
 use db::SqliteRepository;
 use state::AppState;
 use std::path::PathBuf;
@@ -42,13 +36,10 @@ pub fn run() {
     let repository = SqliteRepository::open(&db_path).expect("failed to open database");
     let app_state = AppState::new(repository);
 
-    let sync_engine_state = SyncEngineState::new();
-
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
-        .manage(sync_engine_state)
         .setup(|_app| {
             // File watcher will be started when the first directory is watched
             // via the start_watching command
@@ -81,16 +72,6 @@ pub fn run() {
             start_watching,
             stop_watching,
             get_watched_directories,
-            // Sync commands
-            start_sync,
-            get_sync_status,
-            cancel_sync,
-            confirm_orphan_deletion,
-            skip_orphan_deletion,
-            register_device,
-            get_device_status,
-            check_connectivity,
-            get_local_sync_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

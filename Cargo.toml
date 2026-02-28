@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "apps/backend",
     "apps/desktop/src-tauri",
     "libs/flashcard-core",
 ]
