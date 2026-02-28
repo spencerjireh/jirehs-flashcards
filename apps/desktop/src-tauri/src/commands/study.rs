@@ -5,7 +5,7 @@ use crate::db::{
 };
 use crate::state::AppState;
 use chrono::Utc;
-use flashcard_core::algorithm::{get_algorithm, SpacedRepetitionAlgorithm};
+use flashcard_core::algorithm::get_algorithm;
 use flashcard_core::matching::{compare_answers, word_diff, DiffSegment};
 use flashcard_core::types::{Card, CardState, Rating, StudyQueue};
 use tauri::State;

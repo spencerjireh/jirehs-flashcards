@@ -83,17 +83,6 @@ impl FileWatcher {
         Ok(())
     }
 
-    /// Stop the file watcher.
-    pub fn stop(&mut self) {
-        if let Some(tx) = self.stop_tx.take() {
-            let _ = tx.send(());
-        }
-        self.watcher = None;
-        if let Ok(mut dirs) = self.watched_dirs.lock() {
-            dirs.clear();
-        }
-    }
-
     /// Watch a directory for changes.
     pub fn watch(&mut self, path: PathBuf) -> Result<(), String> {
         let watcher = self

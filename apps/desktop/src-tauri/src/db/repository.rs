@@ -2,10 +2,10 @@
 
 use crate::db::date_utils::{get_adjusted_today, get_adjusted_today_string};
 use crate::db::error::DbError;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Utc};
 use flashcard_core::types::{
-    Algorithm, Card, CardState, CardStatus, Deck, DeckSettings, EffectiveSettings, GlobalSettings,
-    MatchingMode, RatingScale, RawCard, StudyQueue,
+    Card, CardState, CardStatus, Deck, DeckSettings, EffectiveSettings, GlobalSettings,
+    MatchingMode, RatingScale, RawCard,
 };
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
@@ -15,9 +15,6 @@ type Result<T> = std::result::Result<T, DbError>;
 /// Repository for card operations.
 pub trait CardRepository {
     fn get_card(&self, id: i64) -> Result<Option<Card>>;
-    fn get_cards_by_deck(&self, deck_path: &str) -> Result<Vec<Card>>;
-    fn upsert_cards(&self, cards: &[Card]) -> Result<()>;
-    fn delete_cards(&self, ids: &[i64]) -> Result<()>;
     fn get_new_cards(&self, deck_path: Option<&str>, limit: usize) -> Result<Vec<Card>>;
     fn get_due_cards(
         &self,
@@ -117,14 +114,6 @@ impl SqliteRepository {
         Ok(repo)
     }
 
-    /// Open in-memory database (for testing).
-    pub fn open_in_memory() -> Result<Self> {
-        let conn = Connection::open_in_memory()?;
-        let repo = Self { conn };
-        repo.initialize()?;
-        Ok(repo)
-    }
-
     fn initialize(&self) -> Result<()> {
         self.conn.execute_batch(super::schema::SCHEMA)?;
         self.conn.execute_batch(super::schema::INIT_GLOBAL_SETTINGS)?;
@@ -217,48 +206,6 @@ impl CardRepository for SqliteRepository {
             )
             .optional()
             .map_err(Into::into)
-    }
-
-    fn get_cards_by_deck(&self, deck_path: &str) -> Result<Vec<Card>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, deck_path, question_text, answer_text, source_file, deleted_at FROM cards WHERE deck_path = ?1 AND deleted_at IS NULL",
-        )?;
-
-        let cards = stmt
-            .query_map(params![deck_path], |row| {
-                Ok(Card {
-                    id: row.get(0)?,
-                    deck_path: row.get(1)?,
-                    question: row.get(2)?,
-                    answer: row.get(3)?,
-                    source_file: row.get(4)?,
-                    deleted_at: None,
-                })
-            })?
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-
-        Ok(cards)
-    }
-
-    fn upsert_cards(&self, cards: &[Card]) -> Result<()> {
-        for card in cards {
-            self.conn.execute(
-                "INSERT OR REPLACE INTO cards (id, deck_path, question_text, answer_text, source_file) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![card.id, card.deck_path, card.question, card.answer, card.source_file],
-            )?;
-        }
-        Ok(())
-    }
-
-    fn delete_cards(&self, ids: &[i64]) -> Result<()> {
-        let now = Utc::now().to_rfc3339();
-        for id in ids {
-            self.conn.execute(
-                "UPDATE cards SET deleted_at = ?1 WHERE id = ?2",
-                params![now, id],
-            )?;
-        }
-        Ok(())
     }
 
     fn get_new_cards(&self, deck_path: Option<&str>, limit: usize) -> Result<Vec<Card>> {

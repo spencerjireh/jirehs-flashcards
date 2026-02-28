@@ -1,8 +1,5 @@
 //! SQLite schema definitions.
 
-/// Current schema version for migrations.
-pub const SCHEMA_VERSION: i32 = 1;
-
 /// Complete schema for local SQLite database.
 pub const SCHEMA: &str = r#"
 -- Cards (parsed from local files)

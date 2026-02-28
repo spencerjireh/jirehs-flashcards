@@ -1,6 +1,6 @@
 //! Deck-related Tauri commands.
 
-use crate::db::{CardRepository, DeckRepository, SettingsRepository, SqliteRepository};
+use crate::db::{DeckRepository, SettingsRepository};
 use crate::state::AppState;
 use flashcard_core::types::Deck;
 use flashcard_core::parser;
