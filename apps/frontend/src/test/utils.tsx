@@ -3,8 +3,7 @@ import { render, type RenderOptions } from '@testing-library/react';
 import { MemoryRouter, type MemoryRouterProps } from 'react-router-dom';
 import type { ReactElement, ReactNode } from 'react';
 
-// Create a new QueryClient for each test to avoid shared state
-function createTestQueryClient() {
+export function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -19,38 +18,31 @@ function createTestQueryClient() {
   });
 }
 
-interface WrapperProps {
-  children: ReactNode;
-}
-
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   routerProps?: MemoryRouterProps;
   queryClient?: QueryClient;
 }
 
-// Create a wrapper with all providers
-function createWrapper(options: CustomRenderOptions = {}) {
-  const queryClient = options.queryClient ?? createTestQueryClient();
-
-  return function Wrapper({ children }: WrapperProps) {
+function createWrapper(queryClient: QueryClient, routerProps?: MemoryRouterProps) {
+  return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter {...options.routerProps}>{children}</MemoryRouter>
+        <MemoryRouter {...routerProps}>{children}</MemoryRouter>
       </QueryClientProvider>
     );
   };
 }
 
-// Custom render function that includes providers
 function customRender(ui: ReactElement, options: CustomRenderOptions = {}) {
-  const { routerProps, queryClient, ...renderOptions } = options;
+  const { routerProps, queryClient: providedClient, ...renderOptions } = options;
+  const queryClient = providedClient ?? createTestQueryClient();
 
   return {
     ...render(ui, {
-      wrapper: createWrapper({ routerProps, queryClient }),
+      wrapper: createWrapper(queryClient, routerProps),
       ...renderOptions,
     }),
-    queryClient: queryClient ?? createTestQueryClient(),
+    queryClient,
   };
 }
 
@@ -59,4 +51,13 @@ export * from '@testing-library/react';
 export { userEvent } from '@testing-library/user-event';
 
 // Override render with custom render
-export { customRender as render, createTestQueryClient };
+export { customRender as render };
+
+// Wrapper factory for renderHook (which doesn't use customRender)
+export function createHookWrapper(queryClient?: QueryClient) {
+  const client = queryClient ?? createTestQueryClient();
+  return {
+    wrapper: createWrapper(client),
+    queryClient: client,
+  };
+}

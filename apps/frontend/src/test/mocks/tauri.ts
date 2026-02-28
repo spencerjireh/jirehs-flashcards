@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { invoke } from '@tauri-apps/api/core';
 import type {
   CalendarData,
   Card,
@@ -7,15 +8,18 @@ import type {
   Deck,
   DeckSettings,
   DeckStats,
-  EffectiveSettings,
-  GlobalSettings,
   ImportResult,
   ReviewResponse,
   StudyQueue,
   StudyStats,
 } from '@jirehs-flashcards/shared-types';
+import {
+  createMockGlobalSettings,
+  createMockEffectiveSettings,
+  createMockDeckStats,
+  createMockStudyStats,
+} from '../factories';
 
-// Default mock return values
 export const mockDefaults = {
   decks: [] as Deck[],
   deck: null as Deck | null,
@@ -27,46 +31,26 @@ export const mockDefaults = {
   } as StudyQueue,
   card: null as Card | null,
   cardState: null as CardState | null,
-  globalSettings: {
-    algorithm: 'sm2',
-    rating_scale: '4point',
-    matching_mode: 'exact',
-    fuzzy_threshold: 0.8,
-    new_cards_per_day: 20,
-    reviews_per_day: 200,
-    daily_reset_hour: 4,
-  } as GlobalSettings,
+  globalSettings: createMockGlobalSettings(),
   deckSettings: null as DeckSettings | null,
-  effectiveSettings: {
-    algorithm: 'sm2',
-    rating_scale: '4point',
-    matching_mode: 'exact',
-    fuzzy_threshold: 0.8,
-    new_cards_per_day: 20,
-    reviews_per_day: 200,
-    daily_reset_hour: 4,
-  } as EffectiveSettings,
-  deckStats: {
+  effectiveSettings: createMockEffectiveSettings(),
+  deckStats: createMockDeckStats({
     total_cards: 0,
     new_cards: 0,
     learning_cards: 0,
     review_cards: 0,
-    average_ease: 2.5,
     average_interval: 0,
-  } as DeckStats,
-  studyStats: {
+  }),
+  studyStats: createMockStudyStats({
     reviews_today: 0,
     new_today: 0,
     streak_days: 0,
     retention_rate: 0,
     total_reviews: 0,
-  } as StudyStats,
+  }),
   calendarData: [] as CalendarData[],
   watchedDirectories: [] as string[],
-  importResult: {
-    imported: 0,
-    deck_path: '',
-  } as ImportResult,
+  importResult: { imported: 0, deck_path: '' } as ImportResult,
   reviewResponse: {
     new_state: {
       status: 'learning',
@@ -87,55 +71,74 @@ export const mockDefaults = {
   } as CompareAnswerResponse,
 };
 
-// Mock functions for Tauri commands
-export const mockTauriCommands = {
-  // Deck commands
-  list_decks: vi.fn(() => Promise.resolve(mockDefaults.decks)),
-  get_deck: vi.fn(() => Promise.resolve(mockDefaults.deck)),
-  import_file: vi.fn(() => Promise.resolve(mockDefaults.importResult)),
-  import_directory: vi.fn(() => Promise.resolve(mockDefaults.importResult)),
-
-  // Study commands
-  get_study_queue: vi.fn(() => Promise.resolve(mockDefaults.studyQueue)),
-  submit_review: vi.fn(() => Promise.resolve(mockDefaults.reviewResponse)),
-  get_card: vi.fn(() => Promise.resolve(mockDefaults.card)),
-  get_card_state: vi.fn(() => Promise.resolve(mockDefaults.cardState)),
-  compare_typed_answer: vi.fn(() => Promise.resolve(mockDefaults.compareAnswerResponse)),
-
-  // Settings commands
-  get_global_settings: vi.fn(() => Promise.resolve(mockDefaults.globalSettings)),
-  save_global_settings: vi.fn(() => Promise.resolve()),
-  get_deck_settings: vi.fn(() => Promise.resolve(mockDefaults.deckSettings)),
-  save_deck_settings: vi.fn(() => Promise.resolve()),
-  delete_deck_settings: vi.fn(() => Promise.resolve()),
-  get_effective_settings: vi.fn(() => Promise.resolve(mockDefaults.effectiveSettings)),
-
-  // Stats commands
-  get_deck_stats: vi.fn(() => Promise.resolve(mockDefaults.deckStats)),
-  get_study_stats: vi.fn(() => Promise.resolve(mockDefaults.studyStats)),
-  get_calendar_data: vi.fn(() => Promise.resolve(mockDefaults.calendarData)),
-
-  // File watcher commands
-  start_watching: vi.fn(() => Promise.resolve()),
-  stop_watching: vi.fn(() => Promise.resolve()),
-  get_watched_directories: vi.fn(() => Promise.resolve(mockDefaults.watchedDirectories)),
+// Map command names to their default return values
+const commandDefaults: Record<string, unknown> = {
+  list_decks: mockDefaults.decks,
+  get_deck: mockDefaults.deck,
+  import_file: mockDefaults.importResult,
+  import_directory: mockDefaults.importResult,
+  get_study_queue: mockDefaults.studyQueue,
+  submit_review: mockDefaults.reviewResponse,
+  get_card: mockDefaults.card,
+  get_card_state: mockDefaults.cardState,
+  compare_typed_answer: mockDefaults.compareAnswerResponse,
+  get_global_settings: mockDefaults.globalSettings,
+  save_global_settings: undefined,
+  get_deck_settings: mockDefaults.deckSettings,
+  save_deck_settings: undefined,
+  delete_deck_settings: undefined,
+  get_effective_settings: mockDefaults.effectiveSettings,
+  get_deck_stats: mockDefaults.deckStats,
+  get_study_stats: mockDefaults.studyStats,
+  get_calendar_data: mockDefaults.calendarData,
+  start_watching: undefined,
+  stop_watching: undefined,
+  get_watched_directories: mockDefaults.watchedDirectories,
 };
 
-// Setup invoke mock to route to correct command mock
-export async function setupTauriMock() {
-  const { invoke } = vi.mocked(await import('@tauri-apps/api/core'));
+function createMockFn(defaultValue: unknown) {
+  return vi.fn((_args?: unknown) => Promise.resolve(defaultValue));
+}
 
-  invoke.mockImplementation(((cmd: string) => {
+export const mockTauriCommands = {
+  list_decks: createMockFn(mockDefaults.decks),
+  get_deck: createMockFn(mockDefaults.deck),
+  import_file: createMockFn(mockDefaults.importResult),
+  import_directory: createMockFn(mockDefaults.importResult),
+  get_study_queue: createMockFn(mockDefaults.studyQueue),
+  submit_review: createMockFn(mockDefaults.reviewResponse),
+  get_card: createMockFn(mockDefaults.card),
+  get_card_state: createMockFn(mockDefaults.cardState),
+  compare_typed_answer: createMockFn(mockDefaults.compareAnswerResponse),
+  get_global_settings: createMockFn(mockDefaults.globalSettings),
+  save_global_settings: createMockFn(undefined),
+  get_deck_settings: createMockFn(mockDefaults.deckSettings),
+  save_deck_settings: createMockFn(undefined),
+  delete_deck_settings: createMockFn(undefined),
+  get_effective_settings: createMockFn(mockDefaults.effectiveSettings),
+  get_deck_stats: createMockFn(mockDefaults.deckStats),
+  get_study_stats: createMockFn(mockDefaults.studyStats),
+  get_calendar_data: createMockFn(mockDefaults.calendarData),
+  start_watching: createMockFn(undefined),
+  stop_watching: createMockFn(undefined),
+  get_watched_directories: createMockFn(mockDefaults.watchedDirectories),
+};
+
+export function setupTauriMock() {
+  vi.mocked(invoke).mockImplementation(((cmd: string, args?: unknown) => {
     const mockFn = mockTauriCommands[cmd as keyof typeof mockTauriCommands];
     if (mockFn) {
-      return mockFn();
+      return mockFn(args);
     }
     console.warn(`Unmocked Tauri command: ${cmd}`);
     return Promise.reject(new Error(`Unmocked Tauri command: ${cmd}`));
   }) as typeof invoke);
 }
 
-// Helper to reset all mocks to defaults
 export function resetTauriMocks() {
-  Object.values(mockTauriCommands).forEach((mock) => mock.mockClear());
+  for (const [cmd, mock] of Object.entries(mockTauriCommands)) {
+    mock.mockReset().mockImplementation(
+      (_args?: unknown) => Promise.resolve(commandDefaults[cmd])
+    );
+  }
 }

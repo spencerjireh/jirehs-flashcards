@@ -1,54 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
 import { useStudySession } from './useStudySession';
 import { useStudyStore } from '../stores/studyStore';
 import {
   createMockCard,
   createMockStudyQueue,
   createMockEffectiveSettings,
-  createMockCompareAnswerResponse,
 } from '../test/factories';
-
-// Mock the tauri module
-vi.mock('../lib/tauri', () => ({
-  tauri: {
-    getStudyQueue: vi.fn(),
-    submitReview: vi.fn(),
-    compareTypedAnswer: vi.fn(),
-    getEffectiveSettings: vi.fn(),
-  },
-}));
-
-import { tauri } from '../lib/tauri';
-
-function createTestQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-      },
-      mutations: {
-        retry: false,
-      },
-    },
-  });
-}
-
-function createWrapper(queryClient?: QueryClient) {
-  const client = queryClient ?? createTestQueryClient();
-
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  };
-}
+import { mockTauriCommands } from '../test/mocks/tauri';
+import { createHookWrapper } from '../test/utils';
 
 describe('useStudySession', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-
     // Reset Zustand store
     useStudyStore.setState({
       currentIndex: 0,
@@ -60,7 +23,7 @@ describe('useStudySession', () => {
     });
 
     // Default mock implementations
-    vi.mocked(tauri.getEffectiveSettings).mockResolvedValue(
+    mockTauriCommands.get_effective_settings.mockResolvedValue(
       createMockEffectiveSettings()
     );
   });
@@ -70,10 +33,11 @@ describe('useStudySession', () => {
       new_cards: [createMockCard()],
       review_cards: [createMockCard()],
     });
-    vi.mocked(tauri.getStudyQueue).mockResolvedValue(mockQueue);
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     expect(result.current.isLoading).toBe(true);
@@ -82,16 +46,17 @@ describe('useStudySession', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(tauri.getStudyQueue).toHaveBeenCalledWith('/decks/test');
+    expect(mockTauriCommands.get_study_queue).toHaveBeenCalledWith({ deckPath: '/decks/test' });
   });
 
   it('should return loading state initially', () => {
-    vi.mocked(tauri.getStudyQueue).mockImplementation(
+    mockTauriCommands.get_study_queue.mockImplementation(
       () => new Promise(() => {})
     );
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     expect(result.current.isLoading).toBe(true);
@@ -105,10 +70,11 @@ describe('useStudySession', () => {
       new_cards: [newCard],
       review_cards: [reviewCard],
     });
-    vi.mocked(tauri.getStudyQueue).mockResolvedValue(mockQueue);
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -125,10 +91,11 @@ describe('useStudySession', () => {
     const mockQueue = createMockStudyQueue({
       new_cards: [card1, card2],
     });
-    vi.mocked(tauri.getStudyQueue).mockResolvedValue(mockQueue);
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -149,10 +116,11 @@ describe('useStudySession', () => {
     const mockQueue = createMockStudyQueue({
       new_cards: [createMockCard(), createMockCard(), createMockCard(), createMockCard()],
     });
-    vi.mocked(tauri.getStudyQueue).mockResolvedValue(mockQueue);
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -173,10 +141,11 @@ describe('useStudySession', () => {
     const mockQueue = createMockStudyQueue({
       new_cards: [createMockCard()],
     });
-    vi.mocked(tauri.getStudyQueue).mockResolvedValue(mockQueue);
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -196,10 +165,11 @@ describe('useStudySession', () => {
     const mockQueue = createMockStudyQueue({
       new_cards: [createMockCard()],
     });
-    vi.mocked(tauri.getStudyQueue).mockResolvedValue(mockQueue);
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -225,10 +195,11 @@ describe('useStudySession', () => {
     const mockQueue = createMockStudyQueue({
       new_cards: [createMockCard()],
     });
-    vi.mocked(tauri.getStudyQueue).mockResolvedValue(mockQueue);
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -248,10 +219,11 @@ describe('useStudySession', () => {
     const mockQueue = createMockStudyQueue({
       new_cards: [createMockCard()],
     });
-    vi.mocked(tauri.getStudyQueue).mockResolvedValue(mockQueue);
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -266,13 +238,14 @@ describe('useStudySession', () => {
   });
 
   it('should return default rating scale when settings not loaded', async () => {
-    vi.mocked(tauri.getEffectiveSettings).mockImplementation(
+    mockTauriCommands.get_effective_settings.mockImplementation(
       () => new Promise(() => {})
     );
-    vi.mocked(tauri.getStudyQueue).mockResolvedValue(createMockStudyQueue());
+    mockTauriCommands.get_study_queue.mockResolvedValue(createMockStudyQueue());
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useStudySession('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     // Default should be 4point

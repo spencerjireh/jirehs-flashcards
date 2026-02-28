@@ -1,56 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
-import type { ReactNode } from 'react';
+import { describe, it, expect } from 'vitest';
+import { render, screen, waitFor } from '../test/utils';
 import { DeckList } from './DeckList';
 import { createMockDeck } from '../test/factories';
-
-// Mock the tauri module
-vi.mock('../lib/tauri', () => ({
-  tauri: {
-    listDecks: vi.fn(),
-  },
-}));
-
-import { tauri } from '../lib/tauri';
-
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-      },
-    },
-  });
-
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>{children}</MemoryRouter>
-      </QueryClientProvider>
-    );
-  };
-}
+import { mockTauriCommands } from '../test/mocks/tauri';
 
 describe('DeckList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('should show loading state', () => {
-    vi.mocked(tauri.listDecks).mockImplementation(() => new Promise(() => {}));
+    mockTauriCommands.list_decks.mockImplementation(() => new Promise(() => {}));
 
-    render(<DeckList />, { wrapper: createWrapper() });
+    render(<DeckList />);
 
     expect(screen.getByText('Loading decks...')).toBeInTheDocument();
   });
 
   it('should show error state with message', async () => {
-    vi.mocked(tauri.listDecks).mockRejectedValue(new Error('Connection failed'));
+    mockTauriCommands.list_decks.mockRejectedValue(new Error('Connection failed'));
 
-    render(<DeckList />, { wrapper: createWrapper() });
+    render(<DeckList />);
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to load decks: Connection failed/)).toBeInTheDocument();
@@ -58,9 +24,9 @@ describe('DeckList', () => {
   });
 
   it('should show empty state when no decks', async () => {
-    vi.mocked(tauri.listDecks).mockResolvedValue([]);
+    mockTauriCommands.list_decks.mockResolvedValue([]);
 
-    render(<DeckList />, { wrapper: createWrapper() });
+    render(<DeckList />);
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'No decks yet' })).toBeInTheDocument();
@@ -87,21 +53,19 @@ describe('DeckList', () => {
         due_count: 5,
       }),
     ];
-    vi.mocked(tauri.listDecks).mockResolvedValue(decks);
+    mockTauriCommands.list_decks.mockResolvedValue(decks);
 
-    render(<DeckList />, { wrapper: createWrapper() });
+    render(<DeckList />);
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Your Decks' })).toBeInTheDocument();
     });
 
-    // Check first deck
     expect(screen.getByText('Spanish Vocabulary')).toBeInTheDocument();
     expect(screen.getByText('100')).toBeInTheDocument();
     expect(screen.getByText('20')).toBeInTheDocument();
     expect(screen.getByText('15')).toBeInTheDocument();
 
-    // Check second deck
     expect(screen.getByText('Math Formulas')).toBeInTheDocument();
     expect(screen.getByText('50')).toBeInTheDocument();
   });
@@ -111,9 +75,9 @@ describe('DeckList', () => {
       path: '/decks/my deck',
       name: 'My Deck',
     });
-    vi.mocked(tauri.listDecks).mockResolvedValue([deck]);
+    mockTauriCommands.list_decks.mockResolvedValue([deck]);
 
-    render(<DeckList />, { wrapper: createWrapper() });
+    render(<DeckList />);
 
     await waitFor(() => {
       expect(screen.getByText('My Deck')).toBeInTheDocument();
@@ -125,9 +89,9 @@ describe('DeckList', () => {
 
   it('should render correct class names', async () => {
     const deck = createMockDeck();
-    vi.mocked(tauri.listDecks).mockResolvedValue([deck]);
+    mockTauriCommands.list_decks.mockResolvedValue([deck]);
 
-    const { container } = render(<DeckList />, { wrapper: createWrapper() });
+    const { container } = render(<DeckList />);
 
     await waitFor(() => {
       expect(container.querySelector('.deck-list')).toBeInTheDocument();
@@ -141,9 +105,9 @@ describe('DeckList', () => {
 
   it('should display stat labels', async () => {
     const deck = createMockDeck();
-    vi.mocked(tauri.listDecks).mockResolvedValue([deck]);
+    mockTauriCommands.list_decks.mockResolvedValue([deck]);
 
-    render(<DeckList />, { wrapper: createWrapper() });
+    render(<DeckList />);
 
     await waitFor(() => {
       expect(screen.getByText('cards')).toBeInTheDocument();

@@ -27,9 +27,10 @@ export function resetIdCounter(start = 1) {
 
 // Deck factory
 export function createMockDeck(overrides: Partial<Deck> = {}): Deck {
+  const id = nextId();
   return {
-    path: `/decks/deck-${nextId()}`,
-    name: `Test Deck ${idCounter}`,
+    path: `/decks/deck-${id}`,
+    name: `Test Deck ${id}`,
     card_count: 10,
     new_count: 5,
     due_count: 3,
@@ -153,7 +154,7 @@ export function createMockCalendarData(
     date.setDate(date.getDate() - i);
     data.push({
       date: date.toISOString().split('T')[0],
-      reviews: Math.floor(Math.random() * 50),
+      reviews: (i * 7) % 50,
       ...overrides[i],
     });
   }

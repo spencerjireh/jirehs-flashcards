@@ -1,60 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
 import { useFileWatcher } from './useFileWatcher';
-
-// Mock the tauri module
-vi.mock('../lib/tauri', () => ({
-  tauri: {
-    getWatchedDirectories: vi.fn(),
-    startWatching: vi.fn(),
-    stopWatching: vi.fn(),
-  },
-}));
-
-// Mock the event API - simplified to avoid async issues
-vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(() => Promise.resolve(() => {})),
-}));
-
-import { tauri } from '../lib/tauri';
-
-function createTestQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-      },
-      mutations: {
-        retry: false,
-      },
-    },
-  });
-}
-
-function createWrapper(queryClient?: QueryClient) {
-  const client = queryClient ?? createTestQueryClient();
-
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  };
-}
+import { mockTauriCommands } from '../test/mocks/tauri';
+import { createHookWrapper } from '../test/utils';
 
 describe('useFileWatcher', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('should fetch watched directories', async () => {
-    vi.mocked(tauri.getWatchedDirectories).mockResolvedValue([
+    mockTauriCommands.get_watched_directories.mockResolvedValue([
       '/path/to/dir1',
       '/path/to/dir2',
     ]);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -64,15 +23,16 @@ describe('useFileWatcher', () => {
       ]);
     });
 
-    expect(tauri.getWatchedDirectories).toHaveBeenCalled();
+    expect(mockTauriCommands.get_watched_directories).toHaveBeenCalled();
   });
 
   it('should start watching a directory', async () => {
-    vi.mocked(tauri.getWatchedDirectories).mockResolvedValue([]);
-    vi.mocked(tauri.startWatching).mockResolvedValue(undefined);
+    mockTauriCommands.get_watched_directories.mockResolvedValue([]);
+    mockTauriCommands.start_watching.mockResolvedValue(undefined);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -87,16 +47,16 @@ describe('useFileWatcher', () => {
       expect(result.current.isStartingWatch).toBe(false);
     });
 
-    expect(tauri.startWatching).toHaveBeenCalled();
-    expect(vi.mocked(tauri.startWatching).mock.calls[0][0]).toBe('/new/path');
+    expect(mockTauriCommands.start_watching).toHaveBeenCalledWith({ dirPath: '/new/path' });
   });
 
   it('should stop watching a directory', async () => {
-    vi.mocked(tauri.getWatchedDirectories).mockResolvedValue(['/path/to/dir']);
-    vi.mocked(tauri.stopWatching).mockResolvedValue(undefined);
+    mockTauriCommands.get_watched_directories.mockResolvedValue(['/path/to/dir']);
+    mockTauriCommands.stop_watching.mockResolvedValue(undefined);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -111,30 +71,31 @@ describe('useFileWatcher', () => {
       expect(result.current.isStoppingWatch).toBe(false);
     });
 
-    expect(tauri.stopWatching).toHaveBeenCalled();
-    expect(vi.mocked(tauri.stopWatching).mock.calls[0][0]).toBe('/path/to/dir');
+    expect(mockTauriCommands.stop_watching).toHaveBeenCalledWith({ dirPath: '/path/to/dir' });
   });
 
   it('should return empty directories initially before fetch', () => {
-    vi.mocked(tauri.getWatchedDirectories).mockImplementation(
+    mockTauriCommands.get_watched_directories.mockImplementation(
       () => new Promise(() => {})
     );
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     expect(result.current.watchedDirectories).toEqual([]);
   });
 
   it('should return isStartingWatch and isStoppingWatch states', async () => {
-    vi.mocked(tauri.getWatchedDirectories).mockResolvedValue([]);
-    vi.mocked(tauri.startWatching).mockImplementation(
+    mockTauriCommands.get_watched_directories.mockResolvedValue([]);
+    mockTauriCommands.start_watching.mockImplementation(
       () => new Promise((resolve) => setTimeout(resolve, 100))
     );
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -146,20 +107,22 @@ describe('useFileWatcher', () => {
   });
 
   it('should return dismissToast function', async () => {
-    vi.mocked(tauri.getWatchedDirectories).mockResolvedValue([]);
+    mockTauriCommands.get_watched_directories.mockResolvedValue([]);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     expect(typeof result.current.dismissToast).toBe('function');
   });
 
   it('should return toasts array', async () => {
-    vi.mocked(tauri.getWatchedDirectories).mockResolvedValue([]);
+    mockTauriCommands.get_watched_directories.mockResolvedValue([]);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     expect(Array.isArray(result.current.toasts)).toBe(true);

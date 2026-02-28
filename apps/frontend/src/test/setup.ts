@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
+import { setupTauriMock, resetTauriMocks } from './mocks/tauri';
 
 // Mock Tauri core API
 vi.mock('@tauri-apps/api/core', () => ({
@@ -22,8 +23,12 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
   confirm: vi.fn(),
 }));
 
-// Cleanup after each test
+// Wire up centralized Tauri command routing
+setupTauriMock();
+
 afterEach(() => {
   cleanup();
-  vi.clearAllMocks();
+  resetTauriMocks();
+  // Re-wire invoke after mock reset
+  setupTauriMock();
 });

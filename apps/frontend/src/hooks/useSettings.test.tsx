@@ -1,61 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
 import { useSettings, useDeckSettings, useEffectiveSettings } from './useSettings';
 import {
   createMockGlobalSettings,
   createMockDeckSettings,
   createMockEffectiveSettings,
 } from '../test/factories';
-
-// Mock the tauri module
-vi.mock('../lib/tauri', () => ({
-  tauri: {
-    getGlobalSettings: vi.fn(),
-    saveGlobalSettings: vi.fn(),
-    getDeckSettings: vi.fn(),
-    saveDeckSettings: vi.fn(),
-    deleteDeckSettings: vi.fn(),
-    getEffectiveSettings: vi.fn(),
-  },
-}));
-
-import { tauri } from '../lib/tauri';
-
-function createTestQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-      },
-      mutations: {
-        retry: false,
-      },
-    },
-  });
-}
-
-function createWrapper(queryClient?: QueryClient) {
-  const client = queryClient ?? createTestQueryClient();
-
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  };
-}
+import { mockTauriCommands } from '../test/mocks/tauri';
+import { createHookWrapper } from '../test/utils';
 
 describe('useSettings', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('should fetch global settings on mount', async () => {
     const mockSettings = createMockGlobalSettings({ new_cards_per_day: 30 });
-    vi.mocked(tauri.getGlobalSettings).mockResolvedValue(mockSettings);
+    mockTauriCommands.get_global_settings.mockResolvedValue(mockSettings);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useSettings(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     expect(result.current.isLoading).toBe(true);
@@ -65,16 +26,17 @@ describe('useSettings', () => {
     });
 
     expect(result.current.settings).toEqual(mockSettings);
-    expect(tauri.getGlobalSettings).toHaveBeenCalled();
+    expect(mockTauriCommands.get_global_settings).toHaveBeenCalled();
   });
 
   it('should return loading state while fetching', () => {
-    vi.mocked(tauri.getGlobalSettings).mockImplementation(
+    mockTauriCommands.get_global_settings.mockImplementation(
       () => new Promise(() => {}) // Never resolves
     );
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useSettings(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     expect(result.current.isLoading).toBe(true);
@@ -83,11 +45,12 @@ describe('useSettings', () => {
 
   it('should handle save errors', async () => {
     const mockSettings = createMockGlobalSettings();
-    vi.mocked(tauri.getGlobalSettings).mockResolvedValue(mockSettings);
-    vi.mocked(tauri.saveGlobalSettings).mockRejectedValue(new Error('Save failed'));
+    mockTauriCommands.get_global_settings.mockResolvedValue(mockSettings);
+    mockTauriCommands.save_global_settings.mockRejectedValue(new Error('Save failed'));
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useSettings(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -107,10 +70,11 @@ describe('useSettings', () => {
 
   it('should return isSaving state', async () => {
     const mockSettings = createMockGlobalSettings();
-    vi.mocked(tauri.getGlobalSettings).mockResolvedValue(mockSettings);
+    mockTauriCommands.get_global_settings.mockResolvedValue(mockSettings);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useSettings(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -122,16 +86,13 @@ describe('useSettings', () => {
 });
 
 describe('useDeckSettings', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('should fetch deck settings when deckPath provided', async () => {
     const mockSettings = createMockDeckSettings({ algorithm: 'fsrs' });
-    vi.mocked(tauri.getDeckSettings).mockResolvedValue(mockSettings);
+    mockTauriCommands.get_deck_settings.mockResolvedValue(mockSettings);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useDeckSettings('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -139,25 +100,27 @@ describe('useDeckSettings', () => {
     });
 
     expect(result.current.settings).toEqual(mockSettings);
-    expect(tauri.getDeckSettings).toHaveBeenCalledWith('/decks/test');
+    expect(mockTauriCommands.get_deck_settings).toHaveBeenCalledWith({ deckPath: '/decks/test' });
   });
 
   it('should not fetch when deckPath is empty', () => {
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useDeckSettings(''), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
-    expect(tauri.getDeckSettings).not.toHaveBeenCalled();
+    expect(mockTauriCommands.get_deck_settings).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
 
   it('should delete deck settings', async () => {
     const mockSettings = createMockDeckSettings();
-    vi.mocked(tauri.getDeckSettings).mockResolvedValue(mockSettings);
-    vi.mocked(tauri.deleteDeckSettings).mockResolvedValue(undefined);
+    mockTauriCommands.get_deck_settings.mockResolvedValue(mockSettings);
+    mockTauriCommands.delete_deck_settings.mockResolvedValue(undefined);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useDeckSettings('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -172,14 +135,15 @@ describe('useDeckSettings', () => {
       expect(result.current.isDeleting).toBe(false);
     });
 
-    expect(tauri.deleteDeckSettings).toHaveBeenCalledWith('/decks/test');
+    expect(mockTauriCommands.delete_deck_settings).toHaveBeenCalledWith({ deckPath: '/decks/test' });
   });
 
   it('should return save and delete functions', async () => {
-    vi.mocked(tauri.getDeckSettings).mockResolvedValue(null);
+    mockTauriCommands.get_deck_settings.mockResolvedValue(null);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useDeckSettings('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     expect(typeof result.current.save).toBe('function');
@@ -190,16 +154,13 @@ describe('useDeckSettings', () => {
 });
 
 describe('useEffectiveSettings', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('should fetch effective settings without deck path', async () => {
     const mockSettings = createMockEffectiveSettings();
-    vi.mocked(tauri.getEffectiveSettings).mockResolvedValue(mockSettings);
+    mockTauriCommands.get_effective_settings.mockResolvedValue(mockSettings);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useEffectiveSettings(), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -207,15 +168,16 @@ describe('useEffectiveSettings', () => {
     });
 
     expect(result.current.data).toEqual(mockSettings);
-    expect(tauri.getEffectiveSettings).toHaveBeenCalledWith(undefined);
+    expect(mockTauriCommands.get_effective_settings).toHaveBeenCalledWith({ deckPath: undefined });
   });
 
   it('should fetch effective settings with deck path', async () => {
     const mockSettings = createMockEffectiveSettings({ algorithm: 'fsrs' });
-    vi.mocked(tauri.getEffectiveSettings).mockResolvedValue(mockSettings);
+    mockTauriCommands.get_effective_settings.mockResolvedValue(mockSettings);
 
+    const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useEffectiveSettings('/decks/test'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     await waitFor(() => {
@@ -223,6 +185,6 @@ describe('useEffectiveSettings', () => {
     });
 
     expect(result.current.data).toEqual(mockSettings);
-    expect(tauri.getEffectiveSettings).toHaveBeenCalledWith('/decks/test');
+    expect(mockTauriCommands.get_effective_settings).toHaveBeenCalledWith({ deckPath: '/decks/test' });
   });
 });
