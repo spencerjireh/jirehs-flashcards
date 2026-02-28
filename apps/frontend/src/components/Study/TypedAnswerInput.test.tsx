@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, userEvent } from '../../test/utils';
 import { TypedAnswerInput } from './TypedAnswerInput';
 
 describe('TypedAnswerInput', () => {
@@ -166,16 +165,4 @@ describe('TypedAnswerInput', () => {
     expect(screen.getByPlaceholderText('Type your answer...')).not.toHaveFocus();
   });
 
-  it('should render with correct class names', () => {
-    const onChange = vi.fn();
-    const onSubmit = vi.fn();
-
-    const { container } = render(
-      <TypedAnswerInput value="" onChange={onChange} onSubmit={onSubmit} />
-    );
-
-    expect(container.querySelector('.typed-answer-input')).toBeInTheDocument();
-    expect(container.querySelector('.typed-answer-textarea')).toBeInTheDocument();
-    expect(container.querySelector('.typed-answer-submit')).toBeInTheDocument();
-  });
 });

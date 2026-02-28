@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { renderHook, waitFor, act, createHookWrapper } from '../test/utils';
 import { useFileWatcher } from './useFileWatcher';
 import { mockTauriCommands } from '../test/mocks/tauri';
-import { createHookWrapper } from '../test/utils';
 
 describe('useFileWatcher', () => {
   it('should fetch watched directories', async () => {
@@ -87,11 +86,9 @@ describe('useFileWatcher', () => {
     expect(result.current.watchedDirectories).toEqual([]);
   });
 
-  it('should return isStartingWatch and isStoppingWatch states', async () => {
+  it('should show toast on start watching error', async () => {
     mockTauriCommands.get_watched_directories.mockResolvedValue([]);
-    mockTauriCommands.start_watching.mockImplementation(
-      () => new Promise((resolve) => setTimeout(resolve, 100))
-    );
+    mockTauriCommands.start_watching.mockRejectedValue(new Error('Permission denied'));
 
     const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
@@ -99,32 +96,115 @@ describe('useFileWatcher', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.watchedDirectories).toEqual([]);
+      expect(result.current.isStartingWatch).toBe(false);
     });
 
-    expect(result.current.isStartingWatch).toBe(false);
-    expect(result.current.isStoppingWatch).toBe(false);
+    await act(async () => {
+      result.current.startWatching('/restricted/path');
+    });
+
+    await waitFor(() => {
+      expect(result.current.isStartingWatch).toBe(false);
+    });
+
+    expect(result.current.toasts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'Failed to watch directory: Permission denied',
+          type: 'warning',
+        }),
+      ])
+    );
   });
 
-  it('should return dismissToast function', async () => {
-    mockTauriCommands.get_watched_directories.mockResolvedValue([]);
+  it('should show toast on stop watching error', async () => {
+    mockTauriCommands.get_watched_directories.mockResolvedValue(['/some/dir']);
+    mockTauriCommands.stop_watching.mockRejectedValue(new Error('Not found'));
 
     const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
       wrapper,
     });
 
-    expect(typeof result.current.dismissToast).toBe('function');
+    await waitFor(() => {
+      expect(result.current.watchedDirectories).toHaveLength(1);
+    });
+
+    await act(async () => {
+      result.current.stopWatching('/some/dir');
+    });
+
+    await waitFor(() => {
+      expect(result.current.isStoppingWatch).toBe(false);
+    });
+
+    expect(result.current.toasts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'Failed to stop watching: Not found',
+          type: 'warning',
+        }),
+      ])
+    );
   });
 
-  it('should return toasts array', async () => {
+  it('should show success toast after starting watch', async () => {
     mockTauriCommands.get_watched_directories.mockResolvedValue([]);
+    mockTauriCommands.start_watching.mockResolvedValue(undefined);
 
     const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useFileWatcher(), {
       wrapper,
     });
 
-    expect(Array.isArray(result.current.toasts)).toBe(true);
+    await waitFor(() => {
+      expect(result.current.isStartingWatch).toBe(false);
+    });
+
+    await act(async () => {
+      result.current.startWatching('/new/dir');
+    });
+
+    await waitFor(() => {
+      expect(result.current.toasts).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            message: 'Directory is now being watched',
+            type: 'success',
+          }),
+        ])
+      );
+    });
+  });
+
+  it('should dismiss toast by id', async () => {
+    mockTauriCommands.get_watched_directories.mockResolvedValue([]);
+    mockTauriCommands.start_watching.mockResolvedValue(undefined);
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useFileWatcher(), {
+      wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isStartingWatch).toBe(false);
+    });
+
+    // Trigger a toast
+    await act(async () => {
+      result.current.startWatching('/new/dir');
+    });
+
+    await waitFor(() => {
+      expect(result.current.toasts).toHaveLength(1);
+    });
+
+    const toastId = result.current.toasts[0].id;
+
+    act(() => {
+      result.current.dismissToast(toastId);
+    });
+
+    expect(result.current.toasts).toHaveLength(0);
   });
 });

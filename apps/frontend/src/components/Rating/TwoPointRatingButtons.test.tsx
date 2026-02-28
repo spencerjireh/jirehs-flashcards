@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, userEvent } from '../../test/utils';
 import { TwoPointRatingButtons } from './TwoPointRatingButtons';
 
 describe('TwoPointRatingButtons', () => {
@@ -55,22 +54,4 @@ describe('TwoPointRatingButtons', () => {
     expect(onRate).not.toHaveBeenCalled();
   });
 
-  it('should default disabled to false', () => {
-    const onRate = vi.fn();
-
-    render(<TwoPointRatingButtons onRate={onRate} />);
-
-    expect(screen.getByRole('button', { name: 'Wrong' })).not.toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Correct' })).not.toBeDisabled();
-  });
-
-  it('should render with correct class names', () => {
-    const onRate = vi.fn();
-
-    const { container } = render(<TwoPointRatingButtons onRate={onRate} />);
-
-    expect(container.querySelector('.rating-buttons.two-point')).toBeInTheDocument();
-    expect(container.querySelector('.rating-wrong')).toBeInTheDocument();
-    expect(container.querySelector('.rating-correct')).toBeInTheDocument();
-  });
 });

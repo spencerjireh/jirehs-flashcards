@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { renderHook, waitFor, act, createHookWrapper } from '../test/utils';
 import { useStudySession } from './useStudySession';
 import { useStudyStore } from '../stores/studyStore';
 import {
@@ -8,7 +8,6 @@ import {
   createMockEffectiveSettings,
 } from '../test/factories';
 import { mockTauriCommands } from '../test/mocks/tauri';
-import { createHookWrapper } from '../test/utils';
 
 describe('useStudySession', () => {
   beforeEach(() => {
@@ -250,5 +249,181 @@ describe('useStudySession', () => {
 
     // Default should be 4point
     expect(result.current.ratingScale).toBe('4point');
+  });
+
+  it('should submit review and advance to next card', async () => {
+    const card = createMockCard({ id: 42 });
+    const mockQueue = createMockStudyQueue({ new_cards: [card, createMockCard()] });
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
+    mockTauriCommands.submit_review.mockResolvedValue({
+      new_state: { status: 'learning', interval_days: 1, ease_factor: 2.5, lapses: 0, reviews_count: 1 },
+      next_due: new Date().toISOString(),
+    });
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useStudySession('/decks/test'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // Start timer so getElapsedMs returns a value
+    act(() => {
+      useStudyStore.getState().startTimer();
+    });
+
+    await act(async () => {
+      result.current.rate(3);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSubmitting).toBe(false);
+    });
+
+    expect(mockTauriCommands.submit_review).toHaveBeenCalledWith({
+      request: expect.objectContaining({
+        card_id: 42,
+        rating: 3,
+        rating_scale: '4point',
+        answer_mode: 'flip',
+      }),
+    });
+    // Should have advanced to next card
+    expect(result.current.currentIndex).toBe(1);
+  });
+
+  it('should not rate when no current card', async () => {
+    mockTauriCommands.get_study_queue.mockResolvedValue(createMockStudyQueue());
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useStudySession('/decks/test'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.rate(3);
+    });
+
+    expect(mockTauriCommands.submit_review).not.toHaveBeenCalled();
+  });
+
+  it('should submit typed answer and set compare result', async () => {
+    const card = createMockCard({ id: 10, answer: 'Paris' });
+    const mockQueue = createMockStudyQueue({ new_cards: [card] });
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
+
+    const compareResponse = {
+      is_correct: true,
+      similarity: 1.0,
+      matching_mode: 'exact' as const,
+      typed_normalized: 'paris',
+      correct_normalized: 'paris',
+      diff: [{ text: 'paris', diff_type: 'Same' as const }],
+    };
+    mockTauriCommands.compare_typed_answer.mockResolvedValue(compareResponse);
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useStudySession('/decks/test'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.setTypedAnswer('Paris');
+    });
+
+    await act(async () => {
+      result.current.submitTypedAnswer();
+    });
+
+    await waitFor(() => {
+      expect(result.current.compareResult).toEqual(compareResponse);
+    });
+
+    expect(result.current.revealed).toBe(true);
+    expect(mockTauriCommands.compare_typed_answer).toHaveBeenCalledWith({
+      typedAnswer: 'Paris',
+      correctAnswer: 'Paris',
+      deckPath: '/decks/test',
+    });
+  });
+
+  it('should not submit typed answer when empty', async () => {
+    const card = createMockCard({ id: 10 });
+    const mockQueue = createMockStudyQueue({ new_cards: [card] });
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useStudySession('/decks/test'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.submitTypedAnswer();
+    });
+
+    expect(mockTauriCommands.compare_typed_answer).not.toHaveBeenCalled();
+  });
+
+  it('should use rating scale from effective settings', async () => {
+    mockTauriCommands.get_effective_settings.mockResolvedValue(
+      createMockEffectiveSettings({ rating_scale: '2point' })
+    );
+    mockTauriCommands.get_study_queue.mockResolvedValue(
+      createMockStudyQueue({ new_cards: [createMockCard()] })
+    );
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useStudySession('/decks/test'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.ratingScale).toBe('2point');
+    });
+  });
+
+  it('should handle queue fetch error', async () => {
+    mockTauriCommands.get_study_queue.mockRejectedValue(new Error('Network error'));
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useStudySession('/decks/test'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.queue.isError).toBe(true);
+    });
+
+    expect(result.current.queue.error?.message).toBe('Network error');
+  });
+
+  it('should restart session by resetting store and refetching queue', async () => {
+    const mockQueue = createMockStudyQueue({ new_cards: [createMockCard()] });
+    mockTauriCommands.get_study_queue.mockResolvedValue(mockQueue);
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useStudySession('/decks/test'), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // Advance state
+    act(() => {
+      useStudyStore.getState().setCurrentIndex(1);
+      useStudyStore.getState().setRevealed(true);
+    });
+
+    expect(result.current.isComplete).toBe(true);
+
+    act(() => {
+      result.current.restart();
+    });
+
+    // Store should be reset
+    expect(useStudyStore.getState().currentIndex).toBe(0);
+    expect(useStudyStore.getState().revealed).toBe(false);
   });
 });

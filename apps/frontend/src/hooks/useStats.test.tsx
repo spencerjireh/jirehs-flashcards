@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '../test/utils';
 import { useDeckStats, useStudyStats, useCalendarData } from './useStats';
 import {
   createMockDeckStats,

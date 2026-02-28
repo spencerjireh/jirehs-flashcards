@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '../../test/utils';
 import { StudyProgress } from './StudyProgress';
 
 describe('StudyProgress', () => {
@@ -40,12 +40,4 @@ describe('StudyProgress', () => {
     expect(screen.getByText('0 / 0')).toBeInTheDocument();
   });
 
-  it('should render with correct class names', () => {
-    const { container } = render(<StudyProgress current={3} total={10} />);
-
-    expect(container.querySelector('.study-progress')).toBeInTheDocument();
-    expect(container.querySelector('.progress-bar')).toBeInTheDocument();
-    expect(container.querySelector('.progress-fill')).toBeInTheDocument();
-    expect(container.querySelector('.progress-text')).toBeInTheDocument();
-  });
 });

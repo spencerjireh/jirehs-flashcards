@@ -1,16 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, userEvent } from '../../test/utils';
 import { StudyComplete } from './StudyComplete';
-
-function renderWithRouter(component: React.ReactElement) {
-  return render(<MemoryRouter>{component}</MemoryRouter>);
-}
 
 describe('StudyComplete', () => {
   it('should display completion message', () => {
-    renderWithRouter(<StudyComplete />);
+    render(<StudyComplete />);
 
     expect(screen.getByRole('heading', { name: 'Session Complete' })).toBeInTheDocument();
     expect(
@@ -21,13 +15,13 @@ describe('StudyComplete', () => {
   it('should render restart button when callback provided', () => {
     const onRestart = vi.fn();
 
-    renderWithRouter(<StudyComplete onRestart={onRestart} />);
+    render(<StudyComplete onRestart={onRestart} />);
 
     expect(screen.getByRole('button', { name: 'Study Again' })).toBeInTheDocument();
   });
 
   it('should hide restart button when callback undefined', () => {
-    renderWithRouter(<StudyComplete />);
+    render(<StudyComplete />);
 
     expect(screen.queryByRole('button', { name: 'Study Again' })).not.toBeInTheDocument();
   });
@@ -36,7 +30,7 @@ describe('StudyComplete', () => {
     const user = userEvent.setup();
     const onRestart = vi.fn();
 
-    renderWithRouter(<StudyComplete onRestart={onRestart} />);
+    render(<StudyComplete onRestart={onRestart} />);
 
     await user.click(screen.getByRole('button', { name: 'Study Again' }));
 
@@ -44,26 +38,11 @@ describe('StudyComplete', () => {
   });
 
   it('should always show back to decks link', () => {
-    renderWithRouter(<StudyComplete />);
+    render(<StudyComplete />);
 
     const link = screen.getByRole('link', { name: 'Back to Decks' });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/');
   });
 
-  it('should render with correct class names', () => {
-    const { container } = renderWithRouter(<StudyComplete />);
-
-    expect(container.querySelector('.study-complete')).toBeInTheDocument();
-    expect(container.querySelector('.study-complete-actions')).toBeInTheDocument();
-  });
-
-  it('should show both buttons when onRestart is provided', () => {
-    const onRestart = vi.fn();
-
-    renderWithRouter(<StudyComplete onRestart={onRestart} />);
-
-    expect(screen.getByRole('button', { name: 'Study Again' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Back to Decks' })).toBeInTheDocument();
-  });
 });

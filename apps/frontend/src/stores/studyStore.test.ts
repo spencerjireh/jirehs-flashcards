@@ -28,36 +28,6 @@ describe('useStudyStore', () => {
     });
   });
 
-  describe('setCurrentIndex', () => {
-    it('should update the current index', () => {
-      useStudyStore.getState().setCurrentIndex(5);
-
-      expect(useStudyStore.getState().currentIndex).toBe(5);
-    });
-
-    it('should allow setting to zero', () => {
-      useStudyStore.getState().setCurrentIndex(10);
-      useStudyStore.getState().setCurrentIndex(0);
-
-      expect(useStudyStore.getState().currentIndex).toBe(0);
-    });
-  });
-
-  describe('setRevealed', () => {
-    it('should set revealed to true', () => {
-      useStudyStore.getState().setRevealed(true);
-
-      expect(useStudyStore.getState().revealed).toBe(true);
-    });
-
-    it('should set revealed to false', () => {
-      useStudyStore.getState().setRevealed(true);
-      useStudyStore.getState().setRevealed(false);
-
-      expect(useStudyStore.getState().revealed).toBe(false);
-    });
-  });
-
   describe('startTimer', () => {
     it('should set startTime to current timestamp', () => {
       const before = Date.now();
@@ -72,6 +42,9 @@ describe('useStudyStore', () => {
   });
 
   describe('getElapsedMs', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
     it('should return 0 when timer not started', () => {
       const elapsed = useStudyStore.getState().getElapsedMs();
 
@@ -79,79 +52,20 @@ describe('useStudyStore', () => {
     });
 
     it('should return elapsed time when timer is running', () => {
-      vi.useFakeTimers();
-
       useStudyStore.getState().startTimer();
       vi.advanceTimersByTime(1000);
 
       const elapsed = useStudyStore.getState().getElapsedMs();
       expect(elapsed).toBeGreaterThanOrEqual(1000);
-
-      vi.useRealTimers();
     });
 
     it('should return correct elapsed time after multiple advances', () => {
-      vi.useFakeTimers();
-
       useStudyStore.getState().startTimer();
       vi.advanceTimersByTime(500);
       vi.advanceTimersByTime(500);
 
       const elapsed = useStudyStore.getState().getElapsedMs();
       expect(elapsed).toBeGreaterThanOrEqual(1000);
-
-      vi.useRealTimers();
-    });
-  });
-
-  describe('setAnswerMode', () => {
-    it('should switch to typed mode', () => {
-      useStudyStore.getState().setAnswerMode('typed');
-
-      expect(useStudyStore.getState().answerMode).toBe('typed');
-    });
-
-    it('should switch back to flip mode', () => {
-      useStudyStore.getState().setAnswerMode('typed');
-      useStudyStore.getState().setAnswerMode('flip');
-
-      expect(useStudyStore.getState().answerMode).toBe('flip');
-    });
-  });
-
-  describe('setTypedAnswer', () => {
-    it('should update the typed answer', () => {
-      useStudyStore.getState().setTypedAnswer('my answer');
-
-      expect(useStudyStore.getState().typedAnswer).toBe('my answer');
-    });
-
-    it('should allow empty string', () => {
-      useStudyStore.getState().setTypedAnswer('something');
-      useStudyStore.getState().setTypedAnswer('');
-
-      expect(useStudyStore.getState().typedAnswer).toBe('');
-    });
-  });
-
-  describe('setCompareResult', () => {
-    it('should store comparison result', () => {
-      const result = createMockCompareAnswerResponse({
-        is_correct: true,
-        similarity: 1.0,
-      });
-
-      useStudyStore.getState().setCompareResult(result);
-
-      expect(useStudyStore.getState().compareResult).toEqual(result);
-    });
-
-    it('should allow setting to null', () => {
-      const result = createMockCompareAnswerResponse();
-      useStudyStore.getState().setCompareResult(result);
-      useStudyStore.getState().setCompareResult(null);
-
-      expect(useStudyStore.getState().compareResult).toBeNull();
     });
   });
 

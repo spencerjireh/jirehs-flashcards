@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '../../test/utils';
 import { AnswerComparison } from './AnswerComparison';
 import { createMockCompareAnswerResponse } from '../../test/factories';
 
@@ -22,22 +22,6 @@ describe('AnswerComparison', () => {
     render(<AnswerComparison result={result} correctAnswer="test answer" />);
 
     expect(screen.getByText('Incorrect')).toBeInTheDocument();
-  });
-
-  it('should apply correct CSS class based on correctness', () => {
-    const correctResult = createMockCompareAnswerResponse({ is_correct: true });
-    const { container: correctContainer } = render(
-      <AnswerComparison result={correctResult} correctAnswer="test" />
-    );
-
-    expect(correctContainer.querySelector('.answer-comparison.correct')).toBeInTheDocument();
-
-    const incorrectResult = createMockCompareAnswerResponse({ is_correct: false });
-    const { container: incorrectContainer } = render(
-      <AnswerComparison result={incorrectResult} correctAnswer="test" />
-    );
-
-    expect(incorrectContainer.querySelector('.answer-comparison.incorrect')).toBeInTheDocument();
   });
 
   it('should show similarity percentage for fuzzy mode', () => {
@@ -73,7 +57,7 @@ describe('AnswerComparison', () => {
     expect(screen.queryByText(/% match/)).not.toBeInTheDocument();
   });
 
-  it('should render diff with correct classes', () => {
+  it('should render all diff segment types', () => {
     const result = createMockCompareAnswerResponse({
       diff: [
         { text: 'same', diff_type: 'Same' },
@@ -82,13 +66,11 @@ describe('AnswerComparison', () => {
       ],
     });
 
-    const { container } = render(
-      <AnswerComparison result={result} correctAnswer="test" />
-    );
+    render(<AnswerComparison result={result} correctAnswer="test" />);
 
-    expect(container.querySelector('.diff-same')).toBeInTheDocument();
-    expect(container.querySelector('.diff-added')).toBeInTheDocument();
-    expect(container.querySelector('.diff-removed')).toBeInTheDocument();
+    expect(screen.getByText('same')).toBeInTheDocument();
+    expect(screen.getByText('added')).toBeInTheDocument();
+    expect(screen.getByText('removed')).toBeInTheDocument();
   });
 
   it('should display correct answer text', () => {

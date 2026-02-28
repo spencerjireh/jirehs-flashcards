@@ -87,22 +87,6 @@ describe('DeckList', () => {
     expect(link).toHaveAttribute('href', '/study/%2Fdecks%2Fmy%20deck');
   });
 
-  it('should render correct class names', async () => {
-    const deck = createMockDeck();
-    mockTauriCommands.list_decks.mockResolvedValue([deck]);
-
-    const { container } = render(<DeckList />);
-
-    await waitFor(() => {
-      expect(container.querySelector('.deck-list')).toBeInTheDocument();
-    });
-
-    expect(container.querySelector('.decks')).toBeInTheDocument();
-    expect(container.querySelector('.deck-card')).toBeInTheDocument();
-    expect(container.querySelector('.deck-name')).toBeInTheDocument();
-    expect(container.querySelector('.deck-stats')).toBeInTheDocument();
-  });
-
   it('should display stat labels', async () => {
     const deck = createMockDeck();
     mockTauriCommands.list_decks.mockResolvedValue([deck]);

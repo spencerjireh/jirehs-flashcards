@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { renderHook, waitFor, act, createHookWrapper } from '../test/utils';
 import { useSettings, useDeckSettings, useEffectiveSettings } from './useSettings';
 import {
   createMockGlobalSettings,
@@ -7,7 +7,6 @@ import {
   createMockEffectiveSettings,
 } from '../test/factories';
 import { mockTauriCommands } from '../test/mocks/tauri';
-import { createHookWrapper } from '../test/utils';
 
 describe('useSettings', () => {
   it('should fetch global settings on mount', async () => {
@@ -68,9 +67,10 @@ describe('useSettings', () => {
     expect(result.current.saveError?.message).toBe('Save failed');
   });
 
-  it('should return isSaving state', async () => {
+  it('should save settings successfully', async () => {
     const mockSettings = createMockGlobalSettings();
     mockTauriCommands.get_global_settings.mockResolvedValue(mockSettings);
+    mockTauriCommands.save_global_settings.mockResolvedValue(undefined);
 
     const { wrapper } = createHookWrapper();
     const { result } = renderHook(() => useSettings(), {
@@ -81,7 +81,33 @@ describe('useSettings', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.isSaving).toBe(false);
+    const updated = createMockGlobalSettings({ new_cards_per_day: 50 });
+
+    await act(async () => {
+      result.current.save(updated);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSaving).toBe(false);
+    });
+
+    expect(mockTauriCommands.save_global_settings).toHaveBeenCalledWith({ settings: updated });
+    expect(result.current.saveError).toBeNull();
+  });
+
+  it('should handle fetch error', async () => {
+    mockTauriCommands.get_global_settings.mockRejectedValue(new Error('Load failed'));
+
+    const { wrapper } = createHookWrapper();
+    const { result } = renderHook(() => useSettings(), {
+      wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.error?.message).toBe('Load failed');
   });
 });
 
@@ -138,19 +164,6 @@ describe('useDeckSettings', () => {
     expect(mockTauriCommands.delete_deck_settings).toHaveBeenCalledWith({ deckPath: '/decks/test' });
   });
 
-  it('should return save and delete functions', async () => {
-    mockTauriCommands.get_deck_settings.mockResolvedValue(null);
-
-    const { wrapper } = createHookWrapper();
-    const { result } = renderHook(() => useDeckSettings('/decks/test'), {
-      wrapper,
-    });
-
-    expect(typeof result.current.save).toBe('function');
-    expect(typeof result.current.delete).toBe('function');
-    expect(typeof result.current.saveAsync).toBe('function');
-    expect(typeof result.current.deleteAsync).toBe('function');
-  });
 });
 
 describe('useEffectiveSettings', () => {

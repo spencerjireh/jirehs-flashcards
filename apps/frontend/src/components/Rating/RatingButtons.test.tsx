@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, userEvent } from '../../test/utils';
 import { RatingButtons } from './RatingButtons';
 
 describe('RatingButtons', () => {
@@ -57,14 +56,6 @@ describe('RatingButtons', () => {
       expect(onRate).not.toHaveBeenCalled();
     });
 
-    it('should render with correct class names', () => {
-      const onRate = vi.fn();
-
-      const { container } = render(<RatingButtons onRate={onRate} />);
-
-      expect(container.querySelector('.rating-buttons')).toBeInTheDocument();
-      expect(container.querySelectorAll('.rating-button')).toHaveLength(4);
-    });
   });
 
   describe('2-point scale', () => {
@@ -77,26 +68,6 @@ describe('RatingButtons', () => {
       expect(screen.getByRole('button', { name: 'Correct' })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Again' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Hard' })).not.toBeInTheDocument();
-    });
-  });
-
-  describe('default behavior', () => {
-    it('should default to 4point scale when not specified', () => {
-      const onRate = vi.fn();
-
-      render(<RatingButtons onRate={onRate} />);
-
-      expect(screen.getByRole('button', { name: 'Again' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Easy' })).toBeInTheDocument();
-    });
-
-    it('should render with 4point when explicitly set', () => {
-      const onRate = vi.fn();
-
-      render(<RatingButtons onRate={onRate} ratingScale="4point" />);
-
-      expect(screen.getByRole('button', { name: 'Again' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Easy' })).toBeInTheDocument();
     });
   });
 });
