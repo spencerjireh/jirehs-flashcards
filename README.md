@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/frontend/src/assets/logo.png" alt="Jireh's Flashcards" width="80" height="80" />
+  <img src="docs/logo.png" alt="Jireh's Flashcards" width="128" height="128" />
 </p>
 
 <h1 align="center">Jireh's Flashcards</h1>

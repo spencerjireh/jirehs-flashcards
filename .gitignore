@@ -54,6 +54,7 @@ package-lock.json
 *.png
 !apps/desktop/src-tauri/icons/*.png
 !apps/frontend/src/assets/*.png
+!docs/logo.png
 
 # Local dev data
 dev/
