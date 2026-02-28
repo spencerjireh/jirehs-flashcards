@@ -22,8 +22,6 @@ pub fn parse(content: &str) -> Result<Vec<RawCard>> {
         return Ok(vec![]);
     }
 
-    let mut cards = Vec::new();
-    let mut seen_ids = HashSet::new();
     let mut parser = Parser::new();
 
     for (idx, line) in content.lines().enumerate() {
@@ -31,8 +29,7 @@ pub fn parse(content: &str) -> Result<Vec<RawCard>> {
         parser.process_line(line, line_num)?;
     }
 
-    parser.finalize(&mut cards, &mut seen_ids)?;
-    Ok(cards)
+    parser.finalize()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -79,6 +76,8 @@ struct Parser {
     current: Option<CardBuilder>,
     current_field: Option<Field>,
     buffer: Vec<String>,
+    completed: Vec<RawCard>,
+    seen_ids: HashSet<i64>,
 }
 
 impl Parser {
@@ -87,13 +86,15 @@ impl Parser {
             current: None,
             current_field: None,
             buffer: Vec::new(),
+            completed: Vec::new(),
+            seen_ids: HashSet::new(),
         }
     }
 
     fn process_line(&mut self, line: &str, line_num: usize) -> Result<()> {
         match Self::parse_line(line) {
             LineType::Id(id_str) => self.handle_id(id_str, line_num)?,
-            LineType::Question(text) => self.handle_question(text, line_num),
+            LineType::Question(text) => self.handle_question(text, line_num)?,
             LineType::Answer(text) => self.handle_answer(text),
             LineType::Text(text) => self.buffer.push(text.to_string()),
             LineType::Empty => self.buffer.push(String::new()),
@@ -117,6 +118,23 @@ impl Parser {
         }
     }
 
+    fn emit_current(&mut self) -> Result<()> {
+        if let Some(card) = self.current.take() {
+            let raw_card = card.build()?;
+            if let Some(id) = raw_card.id {
+                if !self.seen_ids.insert(id) {
+                    return Err(ParseError::DuplicateId {
+                        id,
+                        line: raw_card.line_number,
+                    });
+                }
+            }
+            self.completed.push(raw_card);
+        }
+        self.current_field = None;
+        Ok(())
+    }
+
     fn handle_id(&mut self, id_str: &str, line_num: usize) -> Result<()> {
         self.flush_buffer();
 
@@ -127,10 +145,12 @@ impl Parser {
                 value: id_str.to_string(),
             })?;
 
-        // Start new card with ID
-        if self.current.is_none() {
-            self.current = Some(CardBuilder::new(line_num));
+        // Emit the previous card (if complete) before starting a new one
+        if self.current.is_some() {
+            self.emit_current()?;
         }
+
+        self.current = Some(CardBuilder::new(line_num));
         if let Some(ref mut card) = self.current {
             card.id = Some(id);
         }
@@ -138,16 +158,26 @@ impl Parser {
         Ok(())
     }
 
-    fn handle_question(&mut self, text: &str, line_num: usize) {
+    fn handle_question(&mut self, text: &str, line_num: usize) -> Result<()> {
         self.flush_buffer();
 
-        // If no current card, start one (card without ID)
+        // If the current card already has a question, it's a new card boundary
+        let needs_new = match &self.current {
+            Some(card) => card.question.is_some(),
+            None => false,
+        };
+
+        if needs_new {
+            self.emit_current()?;
+        }
+
         if self.current.is_none() {
             self.current = Some(CardBuilder::new(line_num));
         }
 
         self.current_field = Some(Field::Question);
         self.buffer.push(text.to_string());
+        Ok(())
     }
 
     fn handle_answer(&mut self, text: &str) {
@@ -173,23 +203,23 @@ impl Parser {
         }
     }
 
-    fn finalize(mut self, cards: &mut Vec<RawCard>, seen_ids: &mut HashSet<i64>) -> Result<()> {
+    fn finalize(mut self) -> Result<Vec<RawCard>> {
         self.flush_buffer();
 
         if let Some(card) = self.current {
             let raw_card = card.build()?;
             if let Some(id) = raw_card.id {
-                if !seen_ids.insert(id) {
+                if !self.seen_ids.insert(id) {
                     return Err(ParseError::DuplicateId {
                         id,
                         line: raw_card.line_number,
                     });
                 }
             }
-            cards.push(raw_card);
+            self.completed.push(raw_card);
         }
 
-        Ok(())
+        Ok(self.completed)
     }
 }
 

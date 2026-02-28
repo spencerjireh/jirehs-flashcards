@@ -189,20 +189,22 @@ impl Default for Algorithm {
 }
 
 impl Algorithm {
-    /// Get the algorithm name as a string.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Sm2 => "sm2",
             Self::Fsrs => "fsrs",
         }
     }
+}
 
-    /// Parse from string.
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for Algorithm {
+    type Err = ();
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
-            "sm2" => Some(Self::Sm2),
-            "fsrs" => Some(Self::Fsrs),
-            _ => None,
+            "sm2" => Ok(Self::Sm2),
+            "fsrs" => Ok(Self::Fsrs),
+            _ => Err(()),
         }
     }
 }

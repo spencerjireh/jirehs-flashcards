@@ -19,7 +19,4 @@ pub enum ParseError {
 
     #[error("duplicate ID {id} at line {line}")]
     DuplicateId { id: i64, line: usize },
-
-    #[error("empty file")]
-    EmptyFile,
 }

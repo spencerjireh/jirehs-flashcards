@@ -453,7 +453,7 @@ impl SettingsRepository for SqliteRepository {
                     let matching_mode_str: String = row.get(2)?;
 
                     Ok(GlobalSettings {
-                        algorithm: Algorithm::from_str(&algorithm_str).unwrap_or_default(),
+                        algorithm: algorithm_str.parse().unwrap_or_default(),
                         rating_scale: match rating_scale_str.as_str() {
                             "2point" => RatingScale::TwoPoint,
                             _ => RatingScale::FourPoint,
@@ -514,7 +514,7 @@ impl SettingsRepository for SqliteRepository {
 
                     Ok(DeckSettings {
                         deck_path,
-                        algorithm: algorithm_str.and_then(|s| Algorithm::from_str(&s)),
+                        algorithm: algorithm_str.and_then(|s| s.parse().ok()),
                         rating_scale: rating_scale_str.map(|s| match s.as_str() {
                             "2point" => RatingScale::TwoPoint,
                             _ => RatingScale::FourPoint,
