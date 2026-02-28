@@ -12,6 +12,7 @@ use commands::settings::{
 use commands::stats::{get_calendar_data, get_deck_stats, get_study_stats};
 use commands::study::{compare_typed_answer, get_card, get_card_state, get_study_queue, submit_review};
 use commands::watcher::{get_watched_directories, start_watching, stop_watching};
+use commands::window::set_traffic_lights_visible;
 use db::SqliteRepository;
 use state::AppState;
 use std::path::PathBuf;
@@ -40,9 +41,31 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
-        .setup(|_app| {
-            // File watcher will be started when the first directory is watched
-            // via the start_watching command
+        .setup(|app| {
+            // Hide macOS traffic lights on startup (shown on hover via frontend)
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::Manager;
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.with_webview(|webview| {
+                        use objc2_app_kit::{NSWindow, NSWindowButton};
+                        unsafe {
+                            let ns_window: &NSWindow = &*webview.ns_window().cast();
+                            let buttons = [
+                                NSWindowButton::CloseButton,
+                                NSWindowButton::MiniaturizeButton,
+                                NSWindowButton::ZoomButton,
+                            ];
+                            for button_type in buttons {
+                                if let Some(button) = ns_window.standardWindowButton(button_type) {
+                                    button.setHidden(true);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            let _ = app;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -72,6 +95,8 @@ pub fn run() {
             start_watching,
             stop_watching,
             get_watched_directories,
+            // Window commands
+            set_traffic_lights_visible,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

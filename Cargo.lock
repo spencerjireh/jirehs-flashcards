@@ -1782,6 +1782,8 @@ dependencies = [
  "dirs 5.0.1",
  "flashcard-core",
  "notify",
+ "objc2",
+ "objc2-app-kit",
  "rusqlite",
  "serde",
  "serde_json",
