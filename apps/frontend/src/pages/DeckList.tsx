@@ -2,6 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { tauri } from '../lib/tauri';
 
+// TODO: Implement featured deck selection logic
+// See guidance below the component.
+function getFeaturedDeck(decks: Array<{ path: string; name: string; card_count: number; new_count: number; due_count: number }>) {
+  return null as typeof decks[number] | null;
+}
+
 export function DeckList() {
   const { data: decks, isLoading, error } = useQuery({
     queryKey: ['decks'],
@@ -25,12 +31,41 @@ export function DeckList() {
     );
   }
 
+  const featured = getFeaturedDeck(decks);
+  const remaining = featured ? decks.filter((d) => d.path !== featured.path) : decks;
+
   return (
     <div className="deck-list">
       <h1>Your Decks</h1>
 
+      {featured && (
+        <>
+          <p className="section-label">Continue Studying</p>
+          <div className="decks" style={{ marginBottom: 'var(--space-xl)' }}>
+            <Link to={`/study/${encodeURIComponent(featured.path)}`} className="deck-card deck-card-featured">
+              <h3 className="deck-name">{featured.name}</h3>
+              <div className="deck-stats">
+                <span className="stat">
+                  <span className="stat-value">{featured.card_count}</span>
+                  <span className="stat-label">cards</span>
+                </span>
+                <span className="stat stat-new">
+                  <span className="stat-value">{featured.new_count}</span>
+                  <span className="stat-label">new</span>
+                </span>
+                <span className="stat stat-due">
+                  <span className="stat-value">{featured.due_count}</span>
+                  <span className="stat-label">due</span>
+                </span>
+              </div>
+            </Link>
+          </div>
+        </>
+      )}
+
+      <p className="section-label">All Decks</p>
       <div className="decks">
-        {decks.map((deck) => (
+        {remaining.map((deck) => (
           <Link key={deck.path} to={`/study/${encodeURIComponent(deck.path)}`} className="deck-card">
             <h3 className="deck-name">{deck.name}</h3>
             <div className="deck-stats">

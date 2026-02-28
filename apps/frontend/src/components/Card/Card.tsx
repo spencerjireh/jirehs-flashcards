@@ -1,4 +1,5 @@
 import type { Card as CardType } from '@jirehs-flashcards/shared-types';
+import { Eye } from 'iconoir-react';
 
 interface CardProps {
   card: CardType;
@@ -21,8 +22,8 @@ export function Card({ card, revealed, onReveal }: CardProps) {
             <div className="card-text">{card.answer}</div>
           </div>
         ) : (
-          <button type="button" className="button reveal-button" onClick={onReveal}>
-            Show Answer
+          <button type="button" className="button button-icon reveal-button" onClick={onReveal}>
+            <Eye /> Show Answer
           </button>
         )}
       </div>

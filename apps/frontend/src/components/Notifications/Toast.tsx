@@ -1,3 +1,5 @@
+import { Xmark } from 'iconoir-react';
+
 export interface Toast {
   id: string;
   message: string;
@@ -23,12 +25,13 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
           <span className="toast-message">{toast.message}</span>
           <button
             className="toast-close"
+            aria-label="Close"
             onClick={(e) => {
               e.stopPropagation();
               onDismiss(toast.id);
             }}
           >
-            x
+            <Xmark />
           </button>
         </div>
       ))}

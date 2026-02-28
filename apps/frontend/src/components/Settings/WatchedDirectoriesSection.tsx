@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
+import { FolderPlus, Trash } from 'iconoir-react';
 
 interface WatchedDirectoriesSectionProps {
   watchedDirectories: string[];
@@ -55,11 +56,11 @@ export function WatchedDirectoriesSection({
               </span>
               <button
                 type="button"
-                className="button button-secondary remove-button"
+                className="button button-secondary button-icon remove-button"
                 onClick={() => onRemoveDirectory(dir)}
                 disabled={isRemovePending}
               >
-                Remove
+                <Trash /> Remove
               </button>
             </div>
           ))
@@ -68,11 +69,11 @@ export function WatchedDirectoriesSection({
 
       <button
         type="button"
-        className="button button-secondary"
+        className="button button-secondary button-icon"
         onClick={handleAddDirectory}
         disabled={isSelecting || isAddPending}
       >
-        {isSelecting ? 'Selecting...' : 'Add Directory'}
+        {isSelecting ? 'Selecting...' : <><FolderPlus /> Add Directory</>}
       </button>
     </div>
   );

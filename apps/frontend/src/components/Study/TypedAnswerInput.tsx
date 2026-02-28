@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import { Check } from 'iconoir-react';
 
 interface TypedAnswerInputProps {
   value: string;
@@ -44,11 +45,11 @@ export function TypedAnswerInput({
       />
       <button
         type="button"
-        className="button typed-answer-submit"
+        className="button button-icon typed-answer-submit"
         onClick={onSubmit}
         disabled={disabled || !value.trim()}
       >
-        Check Answer
+        <Check /> Check Answer
       </button>
     </div>
   );

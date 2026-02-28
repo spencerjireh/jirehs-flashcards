@@ -4,6 +4,7 @@ import { useSettings } from '../hooks/useSettings';
 import { useFileWatcher } from '../hooks/useFileWatcher';
 import { WatchedDirectoriesSection } from '../components/Settings/WatchedDirectoriesSection';
 import { ToastContainer } from '../components/Notifications/Toast';
+import { FloppyDisk } from 'iconoir-react';
 
 export function Settings() {
   const { settings, isLoading, save, isSaving } = useSettings();
@@ -217,8 +218,8 @@ export function Settings() {
         {/* Form Actions */}
         <div className="form-actions">
           {saved && <span className="save-indicator">Settings saved!</span>}
-          <button type="submit" className="button" disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save Settings'}
+          <button type="submit" className="button button-icon" disabled={isSaving}>
+            {isSaving ? 'Saving...' : <><FloppyDisk /> Save Settings</>}
           </button>
         </div>
       </form>
