@@ -46,6 +46,17 @@ pnpm-debug.log*
 # Testing
 coverage/
 
+# npm lockfiles (using pnpm)
+package-lock.json
+
+# Design assets / screenshots
+*.png
+!apps/desktop/src-tauri/icons/*.png
+!apps/frontend/src/assets/*.png
+
+# Local dev data
+dev/
+
 # Misc
 *.bak
 *.tmp
