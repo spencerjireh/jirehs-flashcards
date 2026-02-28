@@ -13,7 +13,7 @@ export function DeckList() {
   }
 
   if (error) {
-    return <div className="error">Failed to load decks: {(error as Error).message}</div>;
+    return <div className="error">Failed to load decks: {error.message}</div>;
   }
 
   if (!decks || decks.length === 0) {

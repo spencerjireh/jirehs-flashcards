@@ -73,9 +73,23 @@ body {
   width: 100%;
 }
 
-/* Buttons */
-.button,
+/* Button reset */
 button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Accent button */
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -91,13 +105,11 @@ button {
   transition: background 0.2s;
 }
 
-.button:hover,
-button:hover {
+.button:hover {
   background: var(--accent-hover);
 }
 
-.button:disabled,
-button:disabled {
+.button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -105,6 +117,7 @@ button:disabled {
 .button-secondary {
   background: transparent;
   border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .button-secondary:hover {
@@ -264,9 +277,13 @@ button:disabled {
 }
 
 .rating-button {
-  background: transparent;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
   border: 2px solid var(--rating-color, var(--border));
+  border-radius: var(--radius);
   color: var(--rating-color, var(--text));
+  transition: background 0.2s;
 }
 
 .rating-button:hover {
@@ -823,13 +840,9 @@ button:disabled {
 .toast-close {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
-  background: transparent;
-  border: none;
   color: var(--text-muted);
-  cursor: pointer;
 }
 
 .toast-close:hover {
   color: var(--text);
-  background: transparent;
 }

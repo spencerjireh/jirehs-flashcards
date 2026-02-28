@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { tauri } from '../lib/tauri';
+import type { Toast } from '../components/Notifications/Toast';
 
 interface FileChangeEvent {
   path: string;
@@ -12,15 +13,6 @@ interface DeckRefreshEvent {
   deck_path: string;
 }
 
-interface Toast {
-  id: string;
-  message: string;
-  type: 'info' | 'success' | 'warning';
-}
-
-/**
- * Hook for managing file watcher state and events.
- */
 export function useFileWatcher() {
   const queryClient = useQueryClient();
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -55,15 +47,13 @@ export function useFileWatcher() {
     },
   });
 
-  // Add a toast notification
-  const addToast = (message: string, type: Toast['type'] = 'info') => {
+  const addToast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = Date.now().toString();
     setToasts((prev) => [...prev, { id, message, type }]);
-    // Auto-remove after 3 seconds
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
-  };
+  }, []);
 
   // Dismiss a toast
   const dismissToast = (id: string) => {
@@ -98,7 +88,7 @@ export function useFileWatcher() {
       unlistenFile?.();
       unlistenDeck?.();
     };
-  }, [queryClient]);
+  }, [queryClient, addToast]);
 
   return {
     watchedDirectories,

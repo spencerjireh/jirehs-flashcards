@@ -20,7 +20,7 @@ export function Stats() {
       <div className="stats-header">
         <h1>{decodedPath ? `Stats: ${decodedPath}` : 'Statistics'}</h1>
         {decodedPath && (
-          <Link to="/stats" className="button-secondary">
+          <Link to="/stats" className="button button-secondary">
             View All Stats
           </Link>
         )}

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Rating, ReviewRequest, AnswerMode, RatingScale } from '@jirehs-flashcards/shared-types';
 import { tauri } from '../lib/tauri';
@@ -54,14 +55,20 @@ export function useStudySession(deckPath?: string) {
   const total = allCards.length;
   const progress = total > 0 ? currentIndex / total : 0;
 
+  // Start timer when a new card is presented
+  const { startTime } = useStudyStore();
+  useEffect(() => {
+    if (currentCard && startTime === null) {
+      startTimer();
+    }
+  }, [currentCard, startTime, startTimer]);
+
   const reveal = () => {
-    startTimer();
     setRevealed(true);
   };
 
   const submitTypedAnswer = () => {
     if (!currentCard || !typedAnswer.trim()) return;
-    startTimer();
     compareAnswer.mutate({
       typed: typedAnswer,
       correct: currentCard.answer,

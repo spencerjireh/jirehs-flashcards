@@ -21,7 +21,7 @@ export function Card({ card, revealed, onReveal }: CardProps) {
             <div className="card-text">{card.answer}</div>
           </div>
         ) : (
-          <button className="reveal-button" onClick={onReveal}>
+          <button type="button" className="button reveal-button" onClick={onReveal}>
             Show Answer
           </button>
         )}

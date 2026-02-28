@@ -6,9 +6,6 @@ import type {
 } from '@jirehs-flashcards/shared-types';
 import { tauri } from '../lib/tauri';
 
-/**
- * Hook for managing global settings.
- */
 export function useSettings() {
   const queryClient = useQueryClient();
 
@@ -36,9 +33,6 @@ export function useSettings() {
   };
 }
 
-/**
- * Hook for managing deck-specific settings.
- */
 export function useDeckSettings(deckPath: string) {
   const queryClient = useQueryClient();
 
@@ -77,9 +71,6 @@ export function useDeckSettings(deckPath: string) {
   };
 }
 
-/**
- * Hook for getting effective settings (merged global + deck).
- */
 export function useEffectiveSettings(deckPath?: string) {
   return useQuery({
     queryKey: ['effective-settings', deckPath],

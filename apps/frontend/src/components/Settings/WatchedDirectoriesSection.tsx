@@ -55,7 +55,7 @@ export function WatchedDirectoriesSection({
               </span>
               <button
                 type="button"
-                className="button-secondary remove-button"
+                className="button button-secondary remove-button"
                 onClick={() => onRemoveDirectory(dir)}
                 disabled={isRemovePending}
               >
@@ -68,7 +68,7 @@ export function WatchedDirectoriesSection({
 
       <button
         type="button"
-        className="button-secondary"
+        className="button button-secondary"
         onClick={handleAddDirectory}
         disabled={isSelecting || isAddPending}
       >

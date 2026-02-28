@@ -11,7 +11,7 @@ export function StudyComplete({ onRestart }: StudyCompleteProps) {
       <p>You've reviewed all cards for this session.</p>
       <div className="study-complete-actions">
         {onRestart && (
-          <button className="button" onClick={onRestart}>
+          <button type="button" className="button" onClick={onRestart}>
             Study Again
           </button>
         )}

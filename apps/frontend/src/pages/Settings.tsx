@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { GlobalSettings, Algorithm, RatingScale, MatchingMode } from '@jirehs-flashcards/shared-types';
+import type { GlobalSettings, MatchingMode } from '@jirehs-flashcards/shared-types';
 import { useSettings } from '../hooks/useSettings';
 import { useFileWatcher } from '../hooks/useFileWatcher';
 import { WatchedDirectoriesSection } from '../components/Settings/WatchedDirectoriesSection';
@@ -79,7 +79,7 @@ export function Settings() {
                   name="algorithm"
                   value="sm2"
                   checked={formData.algorithm === 'sm2'}
-                  onChange={() => handleChange('algorithm', 'sm2' as Algorithm)}
+                  onChange={() => handleChange('algorithm', 'sm2')}
                 />
                 <span>SM-2</span>
               </label>
@@ -89,7 +89,7 @@ export function Settings() {
                   name="algorithm"
                   value="fsrs"
                   checked={formData.algorithm === 'fsrs'}
-                  onChange={() => handleChange('algorithm', 'fsrs' as Algorithm)}
+                  onChange={() => handleChange('algorithm', 'fsrs')}
                 />
                 <span>FSRS</span>
               </label>
@@ -112,7 +112,7 @@ export function Settings() {
                   name="rating_scale"
                   value="4point"
                   checked={formData.rating_scale === '4point'}
-                  onChange={() => handleChange('rating_scale', '4point' as RatingScale)}
+                  onChange={() => handleChange('rating_scale', '4point')}
                 />
                 <span>4-Point (Again, Hard, Good, Easy)</span>
               </label>
@@ -122,7 +122,7 @@ export function Settings() {
                   name="rating_scale"
                   value="2point"
                   checked={formData.rating_scale === '2point'}
-                  onChange={() => handleChange('rating_scale', '2point' as RatingScale)}
+                  onChange={() => handleChange('rating_scale', '2point')}
                 />
                 <span>2-Point (Wrong, Correct)</span>
               </label>
@@ -217,7 +217,7 @@ export function Settings() {
         {/* Form Actions */}
         <div className="form-actions">
           {saved && <span className="save-indicator">Settings saved!</span>}
-          <button type="submit" disabled={isSaving}>
+          <button type="submit" className="button" disabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>

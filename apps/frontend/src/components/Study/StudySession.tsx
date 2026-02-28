@@ -55,7 +55,7 @@ export function StudySession({ deckPath }: StudySessionProps) {
         <StudyProgress current={currentIndex} total={total} />
         <button
           type="button"
-          className="button-secondary mode-toggle"
+          className="button button-secondary mode-toggle"
           onClick={toggleAnswerMode}
         >
           {answerMode === 'flip' ? 'Switch to Typed' : 'Switch to Flip'}
@@ -91,14 +91,12 @@ export function StudySession({ deckPath }: StudySessionProps) {
                   disabled={isComparing}
                 />
               ) : (
-                <>
-                  {compareResult && (
-                    <AnswerComparison
-                      result={compareResult}
-                      correctAnswer={currentCard.answer}
-                    />
-                  )}
-                </>
+                compareResult && (
+                  <AnswerComparison
+                    result={compareResult}
+                    correctAnswer={currentCard.answer}
+                  />
+                )
               )}
             </div>
           </div>

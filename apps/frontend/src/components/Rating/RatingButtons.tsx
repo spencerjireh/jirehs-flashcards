@@ -24,6 +24,7 @@ export function RatingButtons({ onRate, disabled, ratingScale = '4point' }: Rati
       {fourPointRatings.map(({ value, label, color }) => (
         <button
           key={value}
+          type="button"
           className="rating-button"
           style={{ '--rating-color': color } as React.CSSProperties}
           onClick={() => onRate(value)}
