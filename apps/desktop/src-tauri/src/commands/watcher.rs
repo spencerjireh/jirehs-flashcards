@@ -68,7 +68,7 @@ fn scan_directory_recursive(dir: &PathBuf, state: &AppState, deck_paths: &mut Ha
         let path = entry.path();
         if path.is_dir() {
             scan_directory_recursive(&path, state, deck_paths);
-        } else if path.extension().map_or(false, |ext| ext == "md") {
+        } else if path.extension().is_some_and(|ext| ext == "md") {
             let source_file = path.to_string_lossy().to_string();
             let deck_path = path
                 .parent()

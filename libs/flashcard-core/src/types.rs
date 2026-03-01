@@ -4,19 +4,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Card learning status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CardStatus {
+    #[default]
     New,
     Learning,
     Review,
     Relearning,
-}
-
-impl Default for CardStatus {
-    fn default() -> Self {
-        Self::New
-    }
 }
 
 /// Rating for a review.
@@ -111,48 +106,33 @@ pub struct Card {
 }
 
 /// Rating scale options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RatingScale {
     #[serde(rename = "4point")]
+    #[default]
     FourPoint,
     #[serde(rename = "2point")]
     TwoPoint,
 }
 
-impl Default for RatingScale {
-    fn default() -> Self {
-        Self::FourPoint
-    }
-}
-
 /// Answer mode options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AnswerMode {
+    #[default]
     Flip,
     Typed,
 }
 
-impl Default for AnswerMode {
-    fn default() -> Self {
-        Self::Flip
-    }
-}
-
 /// Matching mode for typed answers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MatchingMode {
     Exact,
     CaseInsensitive,
+    #[default]
     Fuzzy,
-}
-
-impl Default for MatchingMode {
-    fn default() -> Self {
-        Self::Fuzzy
-    }
 }
 
 /// Deck with card counts.
@@ -175,17 +155,12 @@ pub struct StudyQueue {
 }
 
 /// Algorithm options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Algorithm {
+    #[default]
     Sm2,
     Fsrs,
-}
-
-impl Default for Algorithm {
-    fn default() -> Self {
-        Self::Sm2
-    }
 }
 
 impl Algorithm {

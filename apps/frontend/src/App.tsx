@@ -27,7 +27,7 @@ function AppContent() {
 
 function App() {
   return (
-    <IconoirProvider strokeWidth={1.25}>
+    <IconoirProvider iconProps={{ strokeWidth: 1.25 }}>
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>

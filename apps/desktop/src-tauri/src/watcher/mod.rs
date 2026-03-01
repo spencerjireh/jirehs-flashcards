@@ -6,7 +6,7 @@ use notify::{
     Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
 };
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -89,7 +89,7 @@ impl FileWatcher {
     }
 
     /// Stop watching a directory.
-    pub fn unwatch(&mut self, path: &PathBuf) -> Result<(), String> {
+    pub fn unwatch(&mut self, path: &Path) -> Result<(), String> {
         let watcher = self
             .watcher
             .as_mut()
@@ -210,7 +210,7 @@ impl FileWatcher {
 
     /// Extract deck path from a markdown file path.
     /// This assumes the deck name is the parent directory of the file.
-    fn get_deck_path_from_file(file_path: &PathBuf) -> Option<String> {
+    fn get_deck_path_from_file(file_path: &Path) -> Option<String> {
         file_path
             .parent()
             .and_then(|p| p.file_name())

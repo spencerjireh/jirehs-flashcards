@@ -166,9 +166,9 @@ pub fn word_diff(typed: &str, correct: &str) -> Vec<DiffSegment> {
                 for k in j + 1..correct_words.len().min(j + 3) {
                     if typed_words[i].to_lowercase() == correct_words[k].to_lowercase() {
                         // Add missing words as added
-                        for l in j..k {
+                        for word in &correct_words[j..k] {
                             result.push(DiffSegment {
-                                text: correct_words[l].to_string(),
+                                text: word.to_string(),
                                 diff_type: DiffType::Added,
                             });
                         }
@@ -183,9 +183,9 @@ pub fn word_diff(typed: &str, correct: &str) -> Vec<DiffSegment> {
                     for k in i + 1..typed_words.len().min(i + 3) {
                         if correct_words[j].to_lowercase() == typed_words[k].to_lowercase() {
                             // Add extra words as removed
-                            for l in i..k {
+                            for word in &typed_words[i..k] {
                                 result.push(DiffSegment {
-                                    text: typed_words[l].to_string(),
+                                    text: word.to_string(),
                                     diff_type: DiffType::Removed,
                                 });
                             }

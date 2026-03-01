@@ -92,7 +92,7 @@ pub async fn import_directory(
         let entry = entry?;
         let path = entry.path();
 
-        if path.extension().map_or(false, |ext| ext == "md") {
+        if path.extension().is_some_and(|ext| ext == "md") {
             let content = fs::read_to_string(&path)?;
             let raw_cards = parser::parse(&content)?;
             let file_path = path.to_string_lossy().to_string();

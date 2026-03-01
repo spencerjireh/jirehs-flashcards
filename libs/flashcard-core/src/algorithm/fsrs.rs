@@ -188,7 +188,7 @@ impl Fsrs {
     /// Calculate short-term interval for learning/relearning states.
     fn short_term_interval(&self, stability: f64) -> f64 {
         // Use 10 minutes to 1 day based on stability
-        let minutes = (stability * 60.0).max(10.0).min(1440.0);
+        let minutes = (stability * 60.0).clamp(10.0, 1440.0);
         minutes / 1440.0
     }
 

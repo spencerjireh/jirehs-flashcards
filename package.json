@@ -1,6 +1,6 @@
 {
   "name": "jirehs-flashcards",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "nx run-many -t dev",
@@ -11,7 +11,8 @@
     "frontend:test": "nx run frontend:test",
     "frontend:test:coverage": "nx run frontend:test:coverage",
     "desktop:dev": "nx run desktop:dev",
-    "desktop:build": "nx run desktop:build"
+    "desktop:build": "nx run desktop:build",
+    "ci": "pnpm frontend:test -- --run && pnpm frontend:build && cargo clippy --workspace -- -D warnings && cargo test --workspace"
   },
   "devDependencies": {
     "nx": "^20.0.0",
