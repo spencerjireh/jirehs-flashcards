@@ -60,6 +60,9 @@
   --duration-normal: 250ms;
   --duration-slow: 400ms;
 
+  /* Sidebar */
+  --sidebar-width-collapsed: 60px;
+
   /* Spacing scale */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
@@ -93,16 +96,20 @@ h1, h2, h3 {
    App Layout
    -------------------------------------------------------------------------- */
 .app {
+  --sidebar-width: 220px;
   min-height: 100vh;
   display: flex;
   flex-direction: row;
+}
+
+.app[data-collapsed] {
+  --sidebar-width: var(--sidebar-width-collapsed);
 }
 
 /* --------------------------------------------------------------------------
    Sidebar -- Editorial Spine
    -------------------------------------------------------------------------- */
 .sidebar {
-  --sidebar-width: 220px;
   display: flex;
   flex-direction: column;
   width: var(--sidebar-width);
@@ -115,6 +122,9 @@ h1, h2, h3 {
   top: 0;
   z-index: 100;
   overflow: hidden;
+  transition:
+    width var(--duration-normal) var(--ease-out),
+    min-width var(--duration-normal) var(--ease-out);
 }
 
 /* Gold hairline accent at the very top */
@@ -258,6 +268,62 @@ h1, h2, h3 {
   background: var(--accent-glow);
 }
 
+/* Toggle button -- pushed to bottom */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.6rem var(--space-md);
+  margin: auto var(--space-sm) 0;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  position: relative;
+  z-index: 2;
+  transition:
+    color var(--duration-normal) var(--ease-out),
+    background var(--duration-normal) var(--ease-out);
+}
+
+.sidebar-toggle:hover {
+  color: var(--text);
+  background: var(--bg-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   Sidebar -- Collapsed State
+   -------------------------------------------------------------------------- */
+.sidebar[data-collapsed] .sidebar-brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar[data-collapsed] .sidebar-brand-text {
+  display: none;
+}
+
+.sidebar[data-collapsed] .sidebar-nav-item {
+  justify-content: center;
+  padding: 0.6rem;
+}
+
+.sidebar[data-collapsed] .sidebar-nav-label {
+  display: none;
+}
+
+.sidebar[data-collapsed] .sidebar-divider {
+  margin-left: var(--space-sm);
+  margin-right: var(--space-sm);
+}
+
+.sidebar[data-collapsed] .sidebar-toggle {
+  justify-content: center;
+  padding: 0.6rem;
+}
+
+.sidebar[data-collapsed] .sidebar-toggle .sidebar-nav-label {
+  display: none;
+}
+
 /* --------------------------------------------------------------------------
    Main Content Area
    -------------------------------------------------------------------------- */
@@ -272,9 +338,10 @@ h1, h2, h3 {
 .main-drag-region {
   position: fixed;
   top: 0;
-  left: 220px;
+  left: var(--sidebar-width);
   right: 0;
   height: 40px;
+  transition: left var(--duration-normal) var(--ease-out);
 }
 
 /* --------------------------------------------------------------------------
@@ -1590,6 +1657,14 @@ button:disabled {
    Reduced Motion
    -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+
+  .main-drag-region {
+    transition: none;
+  }
+
   .toast {
     animation: none;
     opacity: 1;
