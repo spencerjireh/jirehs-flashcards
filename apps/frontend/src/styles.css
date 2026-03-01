@@ -633,16 +633,21 @@ button:disabled {
    Settings Page
    -------------------------------------------------------------------------- */
 .settings-page {
-  max-width: 600px;
+  max-width: 640px;
 }
 
-.settings-page h1 {
-  margin-bottom: var(--space-md);
-}
-
-.settings-page p.settings-description {
-  color: var(--text-muted);
+.settings-header {
   margin-bottom: var(--space-xl);
+}
+
+.settings-header h1 {
+  margin-bottom: var(--space-xs);
+}
+
+.settings-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 /* Settings form */
@@ -658,15 +663,237 @@ button:disabled {
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Warm gold hairline at the top of each section card */
+.settings-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 5%, var(--accent-glow) 25%, var(--accent) 50%, var(--accent-glow) 75%, transparent 95%);
+  opacity: 0.7;
+}
+
+.settings-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border);
 }
 
 .settings-section h2 {
   font-family: var(--font-display);
-  font-size: 1.05rem;
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--border);
+  font-size: 1.1rem;
   color: var(--text);
+  margin-bottom: var(--space-xs);
+}
+
+.settings-section-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  max-width: 440px;
+}
+
+/* Per-section reset link */
+.reset-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.reset-link svg {
+  width: 13px;
+  height: 13px;
+}
+
+.reset-link:hover {
+  color: var(--accent);
+  border-color: var(--accent-glow);
+  background: rgba(200, 168, 78, 0.06);
+}
+
+/* Reset all button at the bottom */
+.settings-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-sm);
+}
+
+.reset-all-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.6rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.reset-all-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.reset-all-button:hover {
+  color: var(--text);
+  border-color: var(--accent-glow);
+  background: var(--bg-tertiary);
+}
+
+/* Settings error message */
+.settings-error {
+  font-size: 0.8rem;
+  color: var(--danger);
+  margin-top: var(--space-md);
+}
+
+/* --------------------------------------------------------------------------
+   Toggle Group -- Pill-style selectors
+   -------------------------------------------------------------------------- */
+.toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+
+.toggle-group-tri {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.toggle-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.toggle-option:hover:not(.active) {
+  color: var(--text);
+  background: rgba(223, 223, 193, 0.04);
+}
+
+.toggle-option.active {
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(200, 168, 78, 0.1), rgba(200, 168, 78, 0.05));
+  box-shadow:
+    0 1px 6px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(200, 168, 78, 0.3),
+    inset 0 1px 0 rgba(223, 223, 193, 0.06);
+}
+
+.toggle-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.toggle-option.active .toggle-label {
+  color: var(--accent-light);
+}
+
+.toggle-desc {
+  font-size: 0.7rem;
+  opacity: 0.65;
+}
+
+.toggle-option.active .toggle-desc {
+  opacity: 0.85;
+}
+
+/* --------------------------------------------------------------------------
+   Slider refinements
+   -------------------------------------------------------------------------- */
+.slider-group {
+  margin-top: var(--space-sm);
+  animation: fadeInUp var(--duration-normal) var(--ease-out);
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.slider-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Limits grid
+   -------------------------------------------------------------------------- */
+.limits-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.number-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.number-input-wrap .form-input {
+  width: 100%;
+}
+
+.number-unit {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .form-group {
@@ -681,7 +908,7 @@ button:disabled {
 }
 
 .form-label {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: var(--text);
   font-weight: 500;
 }
@@ -805,21 +1032,6 @@ button:disabled {
 
 .radio-option span {
   font-size: 0.875rem;
-}
-
-/* Form actions */
-.form-actions {
-  display: flex;
-  gap: var(--space-md);
-  justify-content: flex-end;
-  margin-top: var(--space-md);
-}
-
-/* Save indicator */
-.save-indicator {
-  font-size: 0.875rem;
-  color: var(--success);
-  margin-left: auto;
 }
 
 /* --------------------------------------------------------------------------
@@ -1129,9 +1341,22 @@ button:disabled {
 }
 
 .empty-watched {
+  text-align: center;
+  padding: var(--space-lg) var(--space-md);
+  border: 1px dashed var(--border-hover);
+  border-radius: var(--radius-sm);
+  background: rgba(40, 43, 34, 0.4);
+}
+
+.empty-watched p {
   color: var(--text-muted);
-  font-size: 0.875rem;
-  padding: var(--space-md) 0;
+  font-size: 0.85rem;
+}
+
+.empty-watched .empty-watched-hint {
+  font-size: 0.75rem;
+  margin-top: var(--space-xs);
+  opacity: 0.7;
 }
 
 .watched-directory-item {
@@ -1139,20 +1364,23 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: 0.75rem;
+  padding: 0.6rem 0.75rem;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  transition: border-color var(--duration-normal) var(--ease-out);
+  transition:
+    border-color var(--duration-normal) var(--ease-out),
+    background var(--duration-normal) var(--ease-out);
 }
 
 .watched-directory-item:hover {
   border-color: var(--border-hover);
+  background: rgba(40, 43, 34, 0.8);
 }
 
 .directory-path {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-family: var(--font-mono);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1160,14 +1388,37 @@ button:disabled {
   color: var(--text-muted);
 }
 
-.remove-button {
-  padding: 0.5rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 500;
+.watched-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.watched-action-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.watched-action-danger:hover {
+  color: var(--danger);
+  background: var(--danger-glow);
+}
+
+.watched-actions {
+  display: flex;
+  gap: var(--space-sm);
 }
 
 /* --------------------------------------------------------------------------
-   Toast Notifications -- Glass Effect
+   Toast Notifications -- Warm Glass
    -------------------------------------------------------------------------- */
 .toast-container {
   position: fixed;
@@ -1181,9 +1432,9 @@ button:disabled {
 }
 
 .toast {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.75rem;
   padding: 0.85rem 1.15rem;
   background: var(--bg-glass);
@@ -1192,20 +1443,44 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
-  box-shadow: var(--shadow-md);
-  animation: slideIn var(--duration-normal) var(--ease-out);
+  overflow: hidden;
+  animation: toastSlideIn var(--duration-slow) var(--ease-out) both;
 }
 
+.toast-dismissing {
+  animation: toastSlideOut var(--duration-slow) var(--ease-out) both;
+}
+
+/* Type-specific inner glow */
 .toast-info {
-  border-left: 3px solid var(--accent);
+  box-shadow: var(--shadow-md), inset 0 0 20px -12px var(--accent-glow);
 }
 
 .toast-success {
-  border-left: 3px solid var(--success);
+  box-shadow: var(--shadow-md), inset 0 0 20px -12px var(--success-glow);
 }
 
 .toast-warning {
-  border-left: 3px solid var(--warning);
+  box-shadow: var(--shadow-md), inset 0 0 20px -12px var(--warning-glow);
+}
+
+/* Icon */
+.toast-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.toast-info .toast-icon {
+  color: var(--accent);
+}
+
+.toast-success .toast-icon {
+  color: var(--success);
+}
+
+.toast-warning .toast-icon {
+  color: var(--warning);
 }
 
 .toast-message {
@@ -1215,14 +1490,46 @@ button:disabled {
 }
 
 .toast-close {
-  padding: 0.25rem 0.5rem;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
   color: var(--text-muted);
-  transition: color var(--duration-fast) var(--ease-out);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
 }
 
 .toast-close:hover {
   color: var(--text);
+  background: var(--border-hover);
+}
+
+/* Progress bar */
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  transform-origin: left;
+  animation: toastProgress linear both;
+}
+
+.toast-info .toast-progress {
+  background: var(--accent);
+}
+
+.toast-success .toast-progress {
+  background: var(--success);
+}
+
+.toast-warning .toast-progress {
+  background: var(--warning);
 }
 
 /* --------------------------------------------------------------------------
@@ -1239,14 +1546,34 @@ button:disabled {
   }
 }
 
-@keyframes slideIn {
+@keyframes toastSlideIn {
   from {
     opacity: 0;
-    transform: translateX(40px) scale(0.95);
+    transform: translateX(20px) translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateX(0) translateY(0);
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px) translateY(-4px);
+  }
+}
+
+@keyframes toastProgress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
   }
 }
 
@@ -1256,5 +1583,26 @@ button:disabled {
   }
   50% {
     opacity: 1;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced Motion
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+    opacity: 1;
+  }
+
+  .toast-dismissing {
+    animation: none;
+    opacity: 0;
+    transition: opacity var(--duration-normal);
+  }
+
+  .toast-progress {
+    animation: none;
+    transform: scaleX(0);
   }
 }

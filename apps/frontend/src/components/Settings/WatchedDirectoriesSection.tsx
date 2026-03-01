@@ -44,16 +44,23 @@ export function WatchedDirectoriesSection({
   };
 
   return (
-    <div className="settings-section">
-      <h2>Watched Directories</h2>
-      <p className="form-hint" style={{ marginBottom: '1rem' }}>
-        Directories being monitored for changes to markdown files.
-        Changes will automatically refresh your flashcard decks.
-      </p>
+    <section className="settings-section">
+      <div className="settings-section-header">
+        <div>
+          <h2>Watched Directories</h2>
+          <p className="settings-section-desc">
+            Directories monitored for markdown file changes.
+            New or modified flashcard files are automatically detected and imported.
+          </p>
+        </div>
+      </div>
 
       <div className="watched-directories-list">
         {watchedDirectories.length === 0 ? (
-          <p className="empty-watched">No directories are being watched.</p>
+          <div className="empty-watched">
+            <p>No directories being watched.</p>
+            <p className="empty-watched-hint">Add a directory to start importing flashcards automatically.</p>
+          </div>
         ) : (
           watchedDirectories.map((dir) => (
             <div key={dir} className="watched-directory-item">
@@ -62,25 +69,27 @@ export function WatchedDirectoriesSection({
               </span>
               <button
                 type="button"
-                className="button button-secondary button-icon remove-button"
+                className="watched-action-btn watched-action-danger"
                 onClick={() => onRemoveDirectory(dir)}
                 disabled={isRemovePending}
+                title="Stop watching"
               >
-                <Trash /> Remove
+                <Trash />
               </button>
             </div>
           ))
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div className="watched-actions">
         <button
           type="button"
           className="button button-secondary button-icon"
           onClick={handleAddDirectory}
           disabled={isSelecting || isAddPending}
         >
-          {isSelecting ? 'Selecting...' : <><FolderPlus /> Add Directory</>}
+          <FolderPlus />
+          {isSelecting ? 'Selecting...' : 'Add Directory'}
         </button>
 
         {watchedDirectories.length > 0 && (
@@ -90,16 +99,15 @@ export function WatchedDirectoriesSection({
             onClick={onRefreshAll}
             disabled={isRefreshing}
           >
-            {isRefreshing ? 'Refreshing...' : <><RefreshDouble /> Refresh All</>}
+            <RefreshDouble />
+            {isRefreshing ? 'Refreshing...' : 'Refresh All'}
           </button>
         )}
       </div>
 
       {error && (
-        <p className="form-hint" style={{ color: 'var(--danger)' }}>
-          {error.message}
-        </p>
+        <p className="settings-error">{error.message}</p>
       )}
-    </div>
+    </section>
   );
 }
