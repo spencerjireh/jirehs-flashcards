@@ -5,20 +5,13 @@ use notify::{
     event::{CreateKind, ModifyKind, RemoveKind},
     Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
 };
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
-
-/// Event emitted when a file changes.
-#[derive(Clone, serde::Serialize)]
-pub struct FileChangeEvent {
-    pub path: String,
-    pub kind: String,
-}
 
 /// Event emitted when a deck should be refreshed.
 #[derive(Clone, serde::Serialize)]
@@ -29,7 +22,6 @@ pub struct DeckRefreshEvent {
 /// File watcher that monitors directories for changes.
 pub struct FileWatcher {
     watcher: Option<RecommendedWatcher>,
-    watched_dirs: Arc<Mutex<HashSet<PathBuf>>>,
     stop_tx: Option<Sender<()>>,
 }
 
@@ -38,7 +30,6 @@ impl FileWatcher {
     pub fn new() -> Self {
         Self {
             watcher: None,
-            watched_dirs: Arc::new(Mutex::new(HashSet::new())),
             stop_tx: None,
         }
     }
@@ -67,7 +58,7 @@ impl FileWatcher {
                     let _ = tx.send(event);
                 }
             },
-            Config::default().with_poll_interval(Duration::from_secs(2)),
+            Config::default(),
         )
         .map_err(|e| format!("Failed to create watcher: {}", e))?;
 
@@ -94,10 +85,6 @@ impl FileWatcher {
             .watch(&path, RecursiveMode::Recursive)
             .map_err(|e| format!("Failed to watch directory: {}", e))?;
 
-        if let Ok(mut dirs) = self.watched_dirs.lock() {
-            dirs.insert(path);
-        }
-
         Ok(())
     }
 
@@ -112,19 +99,7 @@ impl FileWatcher {
             .unwatch(path)
             .map_err(|e| format!("Failed to unwatch directory: {}", e))?;
 
-        if let Ok(mut dirs) = self.watched_dirs.lock() {
-            dirs.remove(path);
-        }
-
         Ok(())
-    }
-
-    /// Get the list of watched directories.
-    pub fn get_watched_directories(&self) -> Vec<String> {
-        self.watched_dirs
-            .lock()
-            .map(|dirs| dirs.iter().map(|p| p.to_string_lossy().to_string()).collect())
-            .unwrap_or_default()
     }
 
     /// Event loop that processes file system events.
@@ -134,6 +109,8 @@ impl FileWatcher {
         app_handle: AppHandle,
         repository: Arc<Mutex<SqliteRepository>>,
     ) {
+        let mut last_emit: HashMap<String, Instant> = HashMap::new();
+
         loop {
             // Check for stop signal
             if stop_rx.try_recv().is_ok() {
@@ -143,7 +120,7 @@ impl FileWatcher {
             // Process events with a timeout
             match rx.recv_timeout(Duration::from_millis(100)) {
                 Ok(event) => {
-                    Self::handle_event(&event, &app_handle, &repository);
+                    Self::handle_event(&event, &app_handle, &repository, &mut last_emit);
                 }
                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
                     // No events, continue
@@ -160,6 +137,7 @@ impl FileWatcher {
         event: &Event,
         app_handle: &AppHandle,
         repository: &Arc<Mutex<SqliteRepository>>,
+        last_emit: &mut HashMap<String, Instant>,
     ) {
         // Only process markdown files
         let md_paths: Vec<_> = event
@@ -191,7 +169,6 @@ impl FileWatcher {
             // Auto-import: update local SQLite database
             match kind_str {
                 "created" | "modified" => {
-                    // Read and parse the file, then import cards
                     if let Ok(content) = std::fs::read_to_string(path) {
                         if let Ok(cards) = flashcard_core::parser::parse(&content) {
                             if let Ok(repo) = repository.lock() {
@@ -203,7 +180,6 @@ impl FileWatcher {
                     }
                 }
                 "deleted" => {
-                    // Soft-delete cards from this file
                     if let Ok(repo) = repository.lock() {
                         if let Err(e) = repo.delete_cards_by_source_file(&source_file) {
                             eprintln!("Failed to delete cards from {}: {}", source_file, e);
@@ -213,19 +189,21 @@ impl FileWatcher {
                 _ => {}
             }
 
-            // Emit file change event
-            let file_event = FileChangeEvent {
-                path: source_file.clone(),
-                kind: kind_str.to_string(),
-            };
-            let _ = app_handle.emit("file-changed", file_event);
-
-            // Emit deck refresh event
+            // Emit deck refresh event with debounce
             if !deck_path.is_empty() {
-                let deck_event = DeckRefreshEvent {
-                    deck_path: deck_path.clone(),
-                };
-                let _ = app_handle.emit("deck-updated", deck_event);
+                let now = Instant::now();
+                let should_emit = last_emit
+                    .get(&deck_path)
+                    .map(|last| now.duration_since(*last) > Duration::from_millis(500))
+                    .unwrap_or(true);
+
+                if should_emit {
+                    last_emit.insert(deck_path.clone(), now);
+                    let deck_event = DeckRefreshEvent {
+                        deck_path,
+                    };
+                    let _ = app_handle.emit("deck-updated", deck_event);
+                }
             }
         }
     }
@@ -243,5 +221,13 @@ impl FileWatcher {
 impl Default for FileWatcher {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Drop for FileWatcher {
+    fn drop(&mut self) {
+        if let Some(tx) = self.stop_tx.take() {
+            let _ = tx.send(());
+        }
     }
 }

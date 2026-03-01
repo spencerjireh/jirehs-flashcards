@@ -1,21 +1,27 @@
 import { useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { FolderPlus, Trash } from 'iconoir-react';
+import { FolderPlus, Trash, RefreshDouble } from 'iconoir-react';
 
 interface WatchedDirectoriesSectionProps {
   watchedDirectories: string[];
   onAddDirectory: (path: string) => void;
   onRemoveDirectory: (path: string) => void;
+  onRefreshAll: () => void;
   isAddPending: boolean;
   isRemovePending: boolean;
+  isRefreshing: boolean;
+  error: Error | null;
 }
 
 export function WatchedDirectoriesSection({
   watchedDirectories,
   onAddDirectory,
   onRemoveDirectory,
+  onRefreshAll,
   isAddPending,
   isRemovePending,
+  isRefreshing,
+  error,
 }: WatchedDirectoriesSectionProps) {
   const [isSelecting, setIsSelecting] = useState(false);
 
@@ -67,14 +73,33 @@ export function WatchedDirectoriesSection({
         )}
       </div>
 
-      <button
-        type="button"
-        className="button button-secondary button-icon"
-        onClick={handleAddDirectory}
-        disabled={isSelecting || isAddPending}
-      >
-        {isSelecting ? 'Selecting...' : <><FolderPlus /> Add Directory</>}
-      </button>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button
+          type="button"
+          className="button button-secondary button-icon"
+          onClick={handleAddDirectory}
+          disabled={isSelecting || isAddPending}
+        >
+          {isSelecting ? 'Selecting...' : <><FolderPlus /> Add Directory</>}
+        </button>
+
+        {watchedDirectories.length > 0 && (
+          <button
+            type="button"
+            className="button button-secondary button-icon"
+            onClick={onRefreshAll}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? 'Refreshing...' : <><RefreshDouble /> Refresh All</>}
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <p className="form-hint" style={{ color: 'var(--danger)' }}>
+          {error.message}
+        </p>
+      )}
     </div>
   );
 }

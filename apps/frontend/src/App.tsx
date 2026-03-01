@@ -5,22 +5,31 @@ import { DeckList } from './pages/DeckList';
 import { Study } from './pages/Study';
 import { Settings } from './pages/Settings';
 import { Stats } from './pages/Stats';
+import { useWatcherEvents } from './hooks/useWatcherEvents';
 import './styles.css';
+
+function AppContent() {
+  useWatcherEvents();
+
+  return (
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        <Route index element={<DeckList />} />
+        <Route path="study" element={<Study />} />
+        <Route path="study/:deckPath" element={<Study />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="stats" element={<Stats />} />
+        <Route path="stats/:deckPath" element={<Stats />} />
+      </Route>
+    </Routes>
+  );
+}
 
 function App() {
   return (
     <IconoirProvider strokeWidth={1.25}>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<DeckList />} />
-            <Route path="study" element={<Study />} />
-            <Route path="study/:deckPath" element={<Study />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="stats" element={<Stats />} />
-            <Route path="stats/:deckPath" element={<Stats />} />
-          </Route>
-        </Routes>
+        <AppContent />
       </BrowserRouter>
     </IconoirProvider>
   );

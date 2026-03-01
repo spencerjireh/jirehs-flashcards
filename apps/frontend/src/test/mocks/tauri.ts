@@ -94,6 +94,7 @@ const commandDefaults: Record<string, unknown> = {
   start_watching: undefined,
   stop_watching: undefined,
   get_watched_directories: mockDefaults.watchedDirectories,
+  refresh_watched_directories: undefined,
 };
 
 function createMockFn(defaultValue: unknown) {
@@ -122,6 +123,7 @@ export const mockTauriCommands = {
   start_watching: createMockFn(undefined),
   stop_watching: createMockFn(undefined),
   get_watched_directories: createMockFn(mockDefaults.watchedDirectories),
+  refresh_watched_directories: createMockFn(undefined),
 };
 
 export function setupTauriMock() {

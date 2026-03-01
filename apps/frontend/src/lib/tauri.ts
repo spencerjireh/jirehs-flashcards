@@ -55,4 +55,5 @@ export const tauri = {
   startWatching: (dirPath: string) => invoke<void>('start_watching', { dirPath }),
   stopWatching: (dirPath: string) => invoke<void>('stop_watching', { dirPath }),
   getWatchedDirectories: () => invoke<string[]>('get_watched_directories'),
+  refreshWatchedDirectories: () => invoke<void>('refresh_watched_directories'),
 };

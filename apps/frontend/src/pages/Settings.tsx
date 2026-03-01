@@ -3,7 +3,6 @@ import type { GlobalSettings, MatchingMode } from '@jirehs-flashcards/shared-typ
 import { useSettings } from '../hooks/useSettings';
 import { useFileWatcher } from '../hooks/useFileWatcher';
 import { WatchedDirectoriesSection } from '../components/Settings/WatchedDirectoriesSection';
-import { ToastContainer } from '../components/Notifications/Toast';
 import { FloppyDisk } from 'iconoir-react';
 
 export function Settings() {
@@ -12,10 +11,13 @@ export function Settings() {
     watchedDirectories,
     startWatching,
     stopWatching,
+    refreshAll,
     isStartingWatch,
     isStoppingWatch,
-    toasts,
-    dismissToast,
+    isRefreshing,
+    startError,
+    stopError,
+    refreshError,
   } = useFileWatcher();
   const [formData, setFormData] = useState<GlobalSettings | null>(null);
   const [saved, setSaved] = useState(false);
@@ -229,12 +231,12 @@ export function Settings() {
         watchedDirectories={watchedDirectories}
         onAddDirectory={startWatching}
         onRemoveDirectory={stopWatching}
+        onRefreshAll={refreshAll}
         isAddPending={isStartingWatch}
         isRemovePending={isStoppingWatch}
+        isRefreshing={isRefreshing}
+        error={startError || stopError || refreshError}
       />
-
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 //! File watcher commands.
 
+use crate::db::WatcherRepository;
 use crate::state::AppState;
-use crate::watcher::{DeckRefreshEvent, FileChangeEvent};
+use crate::watcher::DeckRefreshEvent;
+use std::collections::HashSet;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, State};
 
@@ -33,15 +35,30 @@ pub async fn start_watching(
         watcher.watch(path.clone())?;
     }
 
-    // Initial scan: import existing .md files that the watcher would miss
-    // since notify only reports changes *after* the watch is registered.
-    initial_scan(&path, &app_handle, &state);
+    // Persist to DB only after watcher is confirmed active
+    {
+        let repo = state.repository.lock().map_err(|e| e.to_string())?;
+        repo.add_watched_directory(&dir_path).map_err(|e| e.to_string())?;
+    }
+
+    // Initial scan: import existing .md files
+    scan_directory(&path, &app_handle, &state);
 
     Ok(())
 }
 
-/// Walk a directory recursively and import all existing .md files.
-fn initial_scan(dir: &PathBuf, app_handle: &AppHandle, state: &AppState) {
+/// Walk a directory recursively, import all .md files, and emit one event per deck.
+pub(crate) fn scan_directory(dir: &PathBuf, app_handle: &AppHandle, state: &AppState) {
+    let mut deck_paths: HashSet<String> = HashSet::new();
+    scan_directory_recursive(dir, state, &mut deck_paths);
+
+    // Emit one deck-updated event per unique deck
+    for deck_path in deck_paths {
+        let _ = app_handle.emit("deck-updated", DeckRefreshEvent { deck_path });
+    }
+}
+
+fn scan_directory_recursive(dir: &PathBuf, state: &AppState, deck_paths: &mut HashSet<String>) {
     let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(_) => return,
@@ -50,7 +67,7 @@ fn initial_scan(dir: &PathBuf, app_handle: &AppHandle, state: &AppState) {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            initial_scan(&path, app_handle, state);
+            scan_directory_recursive(&path, state, deck_paths);
         } else if path.extension().map_or(false, |ext| ext == "md") {
             let source_file = path.to_string_lossy().to_string();
             let deck_path = path
@@ -63,20 +80,14 @@ fn initial_scan(dir: &PathBuf, app_handle: &AppHandle, state: &AppState) {
                 if let Ok(cards) = flashcard_core::parser::parse(&content) {
                     if let Ok(repo) = state.repository.lock() {
                         if let Err(e) = repo.import_cards(&deck_path, &source_file, &cards) {
-                            eprintln!("Initial scan: failed to import {}: {}", source_file, e);
+                            eprintln!("Scan: failed to import {}: {}", source_file, e);
                         }
                     }
                 }
             }
 
-            let _ = app_handle.emit("file-changed", FileChangeEvent {
-                path: source_file,
-                kind: "created".to_string(),
-            });
             if !deck_path.is_empty() {
-                let _ = app_handle.emit("deck-updated", DeckRefreshEvent {
-                    deck_path,
-                });
+                deck_paths.insert(deck_path);
             }
         }
     }
@@ -87,12 +98,37 @@ fn initial_scan(dir: &PathBuf, app_handle: &AppHandle, state: &AppState) {
 pub async fn stop_watching(dir_path: String, state: State<'_, AppState>) -> Result<(), String> {
     let path = PathBuf::from(&dir_path);
     let mut watcher = state.watcher.lock().await;
-    watcher.unwatch(&path)
+    watcher.unwatch(&path)?;
+
+    // Remove from DB only after watcher confirmed stopped
+    let repo = state.repository.lock().map_err(|e| e.to_string())?;
+    repo.remove_watched_directory(&dir_path).map_err(|e| e.to_string())
 }
 
-/// Get the list of currently watched directories.
+/// Get the list of watched directories (from DB).
 #[tauri::command]
 pub async fn get_watched_directories(state: State<'_, AppState>) -> Result<Vec<String>, String> {
-    let watcher = state.watcher.lock().await;
-    Ok(watcher.get_watched_directories())
+    let repo = state.repository.lock().map_err(|e| e.to_string())?;
+    repo.get_watched_directories().map_err(|e| e.to_string())
+}
+
+/// Re-scan all watched directories and re-import files.
+#[tauri::command]
+pub async fn refresh_watched_directories(
+    app_handle: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let dirs = {
+        let repo = state.repository.lock().map_err(|e| e.to_string())?;
+        repo.get_watched_directories().map_err(|e| e.to_string())?
+    };
+
+    for dir_str in &dirs {
+        let path = PathBuf::from(dir_str);
+        if path.is_dir() {
+            scan_directory(&path, &app_handle, &state);
+        }
+    }
+
+    Ok(())
 }

@@ -71,6 +71,12 @@ CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER PRIMARY KEY
 );
 
+-- Watched directories (persisted for restore on restart)
+CREATE TABLE IF NOT EXISTS watched_directories (
+    path TEXT PRIMARY KEY,
+    added_at TEXT NOT NULL
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_cards_deck ON cards(deck_path);
 CREATE INDEX IF NOT EXISTS idx_cards_deleted ON cards(deleted_at);

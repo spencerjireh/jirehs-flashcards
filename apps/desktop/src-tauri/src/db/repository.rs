@@ -93,6 +93,13 @@ pub struct Review {
     pub algorithm: String,
 }
 
+/// Repository for watched directory operations.
+pub trait WatcherRepository {
+    fn get_watched_directories(&self) -> Result<Vec<String>>;
+    fn add_watched_directory(&self, path: &str) -> Result<()>;
+    fn remove_watched_directory(&self, path: &str) -> Result<()>;
+}
+
 /// Repository for statistics operations.
 pub trait StatsRepository {
     fn get_deck_stats(&self, deck_path: Option<&str>) -> Result<DeckStats>;
@@ -685,5 +692,32 @@ impl StatsRepository for SqliteRepository {
         // Reverse so oldest is first
         data.reverse();
         Ok(data)
+    }
+}
+
+impl WatcherRepository for SqliteRepository {
+    fn get_watched_directories(&self) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare("SELECT path FROM watched_directories ORDER BY added_at")?;
+        let dirs = stmt
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(dirs)
+    }
+
+    fn add_watched_directory(&self, path: &str) -> Result<()> {
+        let now = Utc::now().to_rfc3339();
+        self.conn.execute(
+            "INSERT OR IGNORE INTO watched_directories (path, added_at) VALUES (?1, ?2)",
+            params![path, now],
+        )?;
+        Ok(())
+    }
+
+    fn remove_watched_directory(&self, path: &str) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM watched_directories WHERE path = ?1",
+            params![path],
+        )?;
+        Ok(())
     }
 }
