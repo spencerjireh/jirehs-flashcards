@@ -1,8 +1,8 @@
 //! Deck-related Tauri commands.
 
-use crate::db::{DeckRepository, SettingsRepository};
+use crate::db::{CardRepository, DeckRepository, SettingsRepository};
 use crate::state::AppState;
-use flashcard_core::types::Deck;
+use flashcard_core::types::{Card, Deck};
 use flashcard_core::parser;
 use std::fs;
 use std::path::Path;
@@ -117,4 +117,14 @@ pub async fn get_deck(
     let settings = repo.get_global_settings()?;
     repo.get_deck(&deck_path, settings.daily_reset_hour)
         .map_err(Into::into)
+}
+
+/// Get all cards for a deck (for browse mode).
+#[tauri::command]
+pub async fn get_deck_cards(
+    deck_path: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<Card>, CommandError> {
+    let repo = state.repository.lock().expect("repository lock");
+    repo.get_all_deck_cards(&deck_path).map_err(Into::into)
 }

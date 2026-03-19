@@ -23,6 +23,7 @@ import {
 export const mockDefaults = {
   decks: [] as Deck[],
   deck: null as Deck | null,
+  deckCards: [] as Card[],
   studyQueue: {
     new_cards: [],
     review_cards: [],
@@ -75,6 +76,7 @@ export const mockDefaults = {
 const commandDefaults: Record<string, unknown> = {
   list_decks: mockDefaults.decks,
   get_deck: mockDefaults.deck,
+  get_deck_cards: mockDefaults.deckCards,
   import_file: mockDefaults.importResult,
   import_directory: mockDefaults.importResult,
   get_study_queue: mockDefaults.studyQueue,
@@ -104,6 +106,7 @@ function createMockFn(defaultValue: unknown) {
 export const mockTauriCommands = {
   list_decks: createMockFn(mockDefaults.decks),
   get_deck: createMockFn(mockDefaults.deck),
+  get_deck_cards: createMockFn(mockDefaults.deckCards),
   import_file: createMockFn(mockDefaults.importResult),
   import_directory: createMockFn(mockDefaults.importResult),
   get_study_queue: createMockFn(mockDefaults.studyQueue),

@@ -20,6 +20,7 @@ export const tauri = {
   // Deck commands
   listDecks: () => invoke<Deck[]>('list_decks'),
   getDeck: (deckPath: string) => invoke<Deck | null>('get_deck', { deckPath }),
+  getDeckCards: (deckPath: string) => invoke<Card[]>('get_deck_cards', { deckPath }),
   importFile: (filePath: string) => invoke<ImportResult>('import_file', { filePath }),
   importDirectory: (dirPath: string) => invoke<ImportResult>('import_directory', { dirPath }),
 

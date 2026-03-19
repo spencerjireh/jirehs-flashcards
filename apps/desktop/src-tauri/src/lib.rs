@@ -4,7 +4,7 @@ mod parser;
 mod state;
 mod watcher;
 
-use commands::deck::{get_deck, import_directory, import_file, list_decks};
+use commands::deck::{get_deck, get_deck_cards, import_directory, import_file, list_decks};
 use commands::settings::{
     delete_deck_settings, get_deck_settings, get_effective_settings, get_global_settings,
     save_deck_settings, save_global_settings,
@@ -114,6 +114,7 @@ pub fn run() {
             import_file,
             import_directory,
             get_deck,
+            get_deck_cards,
             // Study commands
             get_study_queue,
             submit_review,

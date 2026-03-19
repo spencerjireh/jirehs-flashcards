@@ -22,6 +22,7 @@ pub trait CardRepository {
         limit: usize,
         daily_reset_hour: u32,
     ) -> Result<Vec<Card>>;
+    fn get_all_deck_cards(&self, deck_path: &str) -> Result<Vec<Card>>;
 }
 
 /// Repository for card state operations.
@@ -268,6 +269,17 @@ impl CardRepository for SqliteRepository {
             stmt.query_map(params![today, limit], Self::row_to_card)?
         };
 
+        cards.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    fn get_all_deck_cards(&self, deck_path: &str) -> Result<Vec<Card>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT c.id, c.deck_path, c.question_text, c.answer_text, c.source_file
+             FROM cards c
+             WHERE c.deck_path = ?1 AND c.deleted_at IS NULL
+             ORDER BY c.id",
+        )?;
+        let cards = stmt.query_map(params![deck_path], Self::row_to_card)?;
         cards.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
     }
 }
