@@ -13,12 +13,14 @@ export function useStudySession(deckPath?: string) {
     answerMode,
     typedAnswer,
     compareResult,
+    sessionCards,
     setRevealed,
     startTimer,
     getElapsedMs,
     setTypedAnswer,
     setCompareResult,
     setAnswerMode,
+    setSessionCards,
     nextCard,
     reset,
   } = useStudyStore();
@@ -49,9 +51,18 @@ export function useStudySession(deckPath?: string) {
     },
   });
 
-  const allCards = [...(queue.data?.new_cards ?? []), ...(queue.data?.review_cards ?? [])];
+  // Snapshot the card array when the queue first loads to prevent desync
+  // if background refetches change the card list mid-session
+  useEffect(() => {
+    if (queue.data && !sessionCards) {
+      setSessionCards([...queue.data.new_cards, ...queue.data.review_cards]);
+    }
+  }, [queue.data, sessionCards, setSessionCards]);
+
+  const allCards = sessionCards ?? [];
   const currentCard = allCards[currentIndex];
-  const isComplete = currentIndex >= allCards.length && queue.isSuccess;
+  const isSessionReady = sessionCards !== null;
+  const isComplete = isSessionReady && currentIndex >= allCards.length;
   const total = allCards.length;
   const progress = total > 0 ? currentIndex / total : 0;
 
@@ -105,7 +116,7 @@ export function useStudySession(deckPath?: string) {
     progress,
     revealed,
     isComplete,
-    isLoading: queue.isLoading,
+    isLoading: queue.isLoading || (queue.isSuccess && !isSessionReady),
     isSubmitting: submitReview.isPending,
     isComparing: compareAnswer.isPending,
     answerMode,

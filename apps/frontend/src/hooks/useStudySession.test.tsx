@@ -19,6 +19,7 @@ describe('useStudySession', () => {
       answerMode: 'flip',
       typedAnswer: '',
       compareResult: null,
+      sessionCards: null,
     });
 
     // Default mock implementations

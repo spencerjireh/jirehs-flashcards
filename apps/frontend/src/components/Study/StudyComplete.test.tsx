@@ -37,12 +37,22 @@ describe('StudyComplete', () => {
     expect(onRestart).toHaveBeenCalledTimes(1);
   });
 
-  it('should always show back to decks link', () => {
-    render(<StudyComplete />);
+  it('should render return button when callback provided', () => {
+    const onReturn = vi.fn();
 
-    const link = screen.getByRole('link', { name: 'Back to Decks' });
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/');
+    render(<StudyComplete onReturn={onReturn} />);
+
+    expect(screen.getByRole('button', { name: 'Back to Decks' })).toBeInTheDocument();
   });
 
+  it('should call onReturn when return button clicked', async () => {
+    const user = userEvent.setup();
+    const onReturn = vi.fn();
+
+    render(<StudyComplete onReturn={onReturn} />);
+
+    await user.click(screen.getByRole('button', { name: 'Back to Decks' }));
+
+    expect(onReturn).toHaveBeenCalledTimes(1);
+  });
 });

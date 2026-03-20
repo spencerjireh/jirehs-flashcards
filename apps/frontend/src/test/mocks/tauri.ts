@@ -9,6 +9,7 @@ import type {
   DeckSettings,
   DeckStats,
   ImportResult,
+  RemoveResult,
   ReviewResponse,
   StudyQueue,
   StudyStats,
@@ -51,7 +52,8 @@ export const mockDefaults = {
   }),
   calendarData: [] as CalendarData[],
   watchedDirectories: [] as string[],
-  importResult: { imported: 0, deck_path: '' } as ImportResult,
+  importResult: { added: 0, updated: 0, removed: 0, deck_path: '' } as ImportResult,
+  removeResult: { cards_removed: 0, deck_path: '' } as RemoveResult,
   reviewResponse: {
     new_state: {
       status: 'learning',
@@ -79,6 +81,7 @@ const commandDefaults: Record<string, unknown> = {
   get_deck_cards: mockDefaults.deckCards,
   import_file: mockDefaults.importResult,
   import_directory: mockDefaults.importResult,
+  remove_deck: mockDefaults.removeResult,
   get_study_queue: mockDefaults.studyQueue,
   submit_review: mockDefaults.reviewResponse,
   get_card: mockDefaults.card,
@@ -109,6 +112,7 @@ export const mockTauriCommands = {
   get_deck_cards: createMockFn(mockDefaults.deckCards),
   import_file: createMockFn(mockDefaults.importResult),
   import_directory: createMockFn(mockDefaults.importResult),
+  remove_deck: createMockFn(mockDefaults.removeResult),
   get_study_queue: createMockFn(mockDefaults.studyQueue),
   submit_review: createMockFn(mockDefaults.reviewResponse),
   get_card: createMockFn(mockDefaults.card),

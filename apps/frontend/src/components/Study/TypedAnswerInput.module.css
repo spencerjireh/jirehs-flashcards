@@ -1,0 +1,17 @@
+.typed-answer-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border);
+}
+
+.typed-answer-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.typed-answer-submit {
+  align-self: flex-end;
+}

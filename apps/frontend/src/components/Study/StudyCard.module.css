@@ -1,0 +1,84 @@
+.card {
+  position: relative;
+  max-width: 680px;
+  width: 90%;
+  min-height: 200px;
+  transition: transform 0.35s var(--ease-spring), opacity 0.3s var(--ease-out);
+}
+
+.card.entering {
+  animation: cardEnter 0.35s var(--ease-out) both;
+}
+
+.card.falling {
+  transition:
+    transform 0.45s var(--ease-gravity, cubic-bezier(0.55, 0, 1, 0.45)),
+    opacity 0.4s ease-in;
+  transform: translateY(120vh) rotate(var(--fall-rotate, 5deg));
+  opacity: 0;
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.question {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  line-height: 1.4;
+  color: var(--text);
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.divider {
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 2rem auto;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out);
+}
+
+.divider[data-visible] {
+  opacity: 1;
+}
+
+.answer {
+  font-family: var(--font-body);
+  font-size: 1.3rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  text-align: center;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.35s var(--ease-out), opacity 0.3s var(--ease-out);
+}
+
+.answer[data-visible] {
+  max-height: 300px;
+  opacity: 1;
+}
+
+/* Typed answer mode within the overlay card */
+.typedSection {
+  margin-top: 2rem;
+}
+
+.comparisonSection {
+  margin-top: 2rem;
+}
+
+.ratingSection {
+  margin-top: var(--space-lg);
+  display: flex;
+  justify-content: center;
+}

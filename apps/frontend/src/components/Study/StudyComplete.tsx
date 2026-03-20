@@ -1,24 +1,27 @@
-import { Link } from 'react-router-dom';
 import { Restart, ArrowLeft } from 'iconoir-react';
+import styles from './StudyComplete.module.css';
 
 interface StudyCompleteProps {
   onRestart?: () => void;
+  onReturn?: () => void;
 }
 
-export function StudyComplete({ onRestart }: StudyCompleteProps) {
+export function StudyComplete({ onRestart, onReturn }: StudyCompleteProps) {
   return (
-    <div className="study-complete">
+    <div className={styles['study-complete']}>
       <h2>Session Complete</h2>
       <p>You've reviewed all cards for this session.</p>
-      <div className="study-complete-actions">
+      <div className={styles['study-complete-actions']}>
         {onRestart && (
           <button type="button" className="button button-icon" onClick={onRestart}>
             <Restart /> Study Again
           </button>
         )}
-        <Link to="/" className="button button-secondary button-icon">
-          <ArrowLeft /> Back to Decks
-        </Link>
+        {onReturn && (
+          <button type="button" className="button button-secondary button-icon" onClick={onReturn}>
+            <ArrowLeft /> Back to Decks
+          </button>
+        )}
       </div>
     </div>
   );

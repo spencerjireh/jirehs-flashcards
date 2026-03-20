@@ -1,0 +1,80 @@
+.answer-comparison {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border);
+  animation: fadeInUp var(--duration-slow) var(--ease-out);
+}
+
+.comparison-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.comparison-result {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.comparison-result.correct {
+  color: var(--success);
+  text-shadow: 0 0 16px var(--success-glow);
+}
+
+.comparison-result.incorrect {
+  color: var(--danger);
+  text-shadow: 0 0 16px var(--danger-glow);
+}
+
+.comparison-similarity {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.comparison-section {
+  margin-bottom: var(--space-md);
+}
+
+.comparison-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  margin-bottom: var(--space-sm);
+}
+
+.comparison-diff,
+.comparison-text {
+  font-size: 1rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.comparison-mode {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: var(--space-md);
+}
+
+/* Diff highlighting */
+.diff-same {
+  color: var(--text);
+}
+
+.diff-added {
+  color: var(--success);
+  background: var(--success-glow);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.diff-removed {
+  color: var(--danger);
+  background: var(--danger-glow);
+  text-decoration: line-through;
+  padding: 0 3px;
+  border-radius: 3px;
+}

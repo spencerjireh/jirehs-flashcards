@@ -73,12 +73,32 @@ export interface ReviewResponse {
 
 // Import result (from Tauri)
 export interface ImportResult {
-  imported: number;
+  added: number;
+  updated: number;
+  removed: number;
   deck_path: string;
 }
 
+// Remove result (from Tauri)
+export interface RemoveResult {
+  cards_removed: number;
+  deck_path: string;
+}
+
+// Import sync event (from file watcher)
+export interface ImportSyncEvent {
+  deck_path: string;
+  added: number;
+  updated: number;
+  removed: number;
+}
+
+// Error codes for typed error handling
+export type ErrorCode = 'database' | 'parse' | 'io' | 'internal';
+
 // Command error (from Tauri)
 export interface CommandError {
+  code: ErrorCode;
   message: string;
 }
 

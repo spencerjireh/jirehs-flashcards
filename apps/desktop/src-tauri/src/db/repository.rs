@@ -4,13 +4,23 @@ use crate::db::date_utils::{get_adjusted_today, get_adjusted_today_string};
 use crate::db::error::DbError;
 use chrono::{DateTime, Utc};
 use flashcard_core::types::{
-    Card, CardState, CardStatus, Deck, DeckSettings, EffectiveSettings, GlobalSettings,
-    MatchingMode, RatingScale, RawCard,
+    CalendarData, Card, CardState, CardStatus, Deck, DeckSettings, DeckStats, EffectiveSettings,
+    GlobalSettings, MatchingMode, RatingScale, RawCard, Review, StudyStats,
 };
 use rusqlite::{params, Connection, OptionalExtension};
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 type Result<T> = std::result::Result<T, DbError>;
+
+/// Diff returned by import_cards showing what changed.
+pub struct ImportDiff {
+    pub added: usize,
+    pub updated: usize,
+    pub removed: usize,
+    /// (line_number, local_id) for cards that need ID injection into the markdown file.
+    pub id_assignments: Vec<(usize, i64)>,
+}
 
 /// Repository for card operations.
 pub trait CardRepository {
@@ -47,53 +57,6 @@ pub trait SettingsRepository {
     fn get_effective_settings(&self, deck_path: Option<&str>) -> Result<EffectiveSettings>;
 }
 
-/// Deck statistics.
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct DeckStats {
-    pub total_cards: usize,
-    pub new_cards: usize,
-    pub learning_cards: usize,
-    pub review_cards: usize,
-    pub average_ease: f64,
-    pub average_interval: f64,
-}
-
-/// Overall study statistics.
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct StudyStats {
-    pub reviews_today: usize,
-    pub new_today: usize,
-    pub streak_days: usize,
-    pub retention_rate: f64,
-    pub total_reviews: usize,
-}
-
-/// Calendar data point.
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct CalendarData {
-    pub date: String,
-    pub reviews: usize,
-}
-
-/// Review record.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct Review {
-    pub id: i64,
-    pub card_id: i64,
-    pub reviewed_at: String,
-    pub rating: i32,
-    pub rating_scale: String,
-    pub answer_mode: String,
-    pub typed_answer: Option<String>,
-    pub was_correct: Option<bool>,
-    pub time_taken_ms: Option<i32>,
-    pub interval_before: f64,
-    pub interval_after: f64,
-    pub ease_before: f64,
-    pub ease_after: f64,
-    pub algorithm: String,
-}
-
 /// Repository for watched directory operations.
 pub trait WatcherRepository {
     fn get_watched_directories(&self) -> Result<Vec<String>>;
@@ -117,6 +80,7 @@ impl SqliteRepository {
     /// Open database at path, creating if necessary.
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
         let conn = Connection::open(path)?;
+        conn.execute_batch("PRAGMA foreign_keys = ON;")?;
         let repo = Self { conn };
         repo.initialize()?;
         Ok(repo)
@@ -125,37 +89,97 @@ impl SqliteRepository {
     fn initialize(&self) -> Result<()> {
         self.conn.execute_batch(super::schema::SCHEMA)?;
         self.conn.execute_batch(super::schema::INIT_GLOBAL_SETTINGS)?;
+        super::schema::run_migrations(&self.conn)?;
         Ok(())
     }
 
-    /// Import cards from parsed markdown.
-    pub fn import_cards(&self, deck_path: &str, source_file: &str, raw_cards: &[RawCard]) -> Result<Vec<i64>> {
-        let mut ids = Vec::with_capacity(raw_cards.len());
+    /// Import cards from parsed markdown, syncing the DB to match.
+    /// Adds new cards, updates existing ones, and removes orphans no longer in the file.
+    /// Uses (source_file, local_id) as the matching key to avoid cross-file ID collisions.
+    pub fn import_cards(&self, deck_path: &str, source_file: &str, raw_cards: &[RawCard]) -> Result<ImportDiff> {
+        let tx = self.conn.unchecked_transaction()?;
+
+        // Build map of existing cards: local_id -> db_id
+        let mut existing_map: HashMap<i64, i64> = HashMap::new();
+        let mut existing_db_ids: HashSet<i64> = HashSet::new();
+        let mut max_existing_local_id: i64 = 0;
+        {
+            let mut stmt = tx.prepare(
+                "SELECT id, local_id FROM cards WHERE source_file = ?1 AND deleted_at IS NULL",
+            )?;
+            let rows = stmt.query_map(params![source_file], |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, Option<i64>>(1)?))
+            })?;
+            for row in rows {
+                let (db_id, local_id) = row?;
+                existing_db_ids.insert(db_id);
+                if let Some(lid) = local_id {
+                    existing_map.insert(lid, db_id);
+                    if lid > max_existing_local_id {
+                        max_existing_local_id = lid;
+                    }
+                }
+            }
+        }
+
+        // Compute starting local_id for cards without IDs
+        let max_incoming_id = raw_cards.iter().filter_map(|r| r.id).max().unwrap_or(0);
+        let mut next_local_id = std::cmp::max(max_existing_local_id, max_incoming_id) + 1;
+
+        let mut added = 0usize;
+        let mut updated = 0usize;
+        let mut seen_db_ids: HashSet<i64> = HashSet::new();
+        let mut id_assignments: Vec<(usize, i64)> = Vec::new();
 
         for raw in raw_cards {
-            let id = if let Some(id) = raw.id {
-                self.conn.execute(
-                    "INSERT OR REPLACE INTO cards (id, deck_path, question_text, answer_text, source_file) VALUES (?1, ?2, ?3, ?4, ?5)",
-                    params![id, deck_path, raw.question, raw.answer, source_file],
-                )?;
-                id
+            let (db_id, _) = if let Some(lid) = raw.id {
+                // Card has an ID in the markdown (= local_id)
+                if let Some(&existing_db_id) = existing_map.get(&lid) {
+                    // Update existing card
+                    tx.execute(
+                        "UPDATE cards SET deck_path = ?1, question_text = ?2, answer_text = ?3, source_file = ?4 WHERE id = ?5",
+                        params![deck_path, raw.question, raw.answer, source_file, existing_db_id],
+                    )?;
+                    updated += 1;
+                    (existing_db_id, lid)
+                } else {
+                    // New card with explicit local_id
+                    tx.execute(
+                        "INSERT INTO cards (local_id, deck_path, question_text, answer_text, source_file) VALUES (?1, ?2, ?3, ?4, ?5)",
+                        params![lid, deck_path, raw.question, raw.answer, source_file],
+                    )?;
+                    added += 1;
+                    (tx.last_insert_rowid(), lid)
+                }
             } else {
-                self.conn.execute(
-                    "INSERT INTO cards (deck_path, question_text, answer_text, source_file) VALUES (?1, ?2, ?3, ?4)",
-                    params![deck_path, raw.question, raw.answer, source_file],
+                // Card has no ID -- assign next_local_id
+                let lid = next_local_id;
+                next_local_id += 1;
+                tx.execute(
+                    "INSERT INTO cards (local_id, deck_path, question_text, answer_text, source_file) VALUES (?1, ?2, ?3, ?4, ?5)",
+                    params![lid, deck_path, raw.question, raw.answer, source_file],
                 )?;
-                self.conn.last_insert_rowid()
+                added += 1;
+                id_assignments.push((raw.line_number, lid));
+                (tx.last_insert_rowid(), lid)
             };
-            ids.push(id);
+            seen_db_ids.insert(db_id);
 
             // Initialize card state if not exists
-            self.conn.execute(
+            tx.execute(
                 "INSERT OR IGNORE INTO card_states (card_id) VALUES (?1)",
-                params![id],
+                params![db_id],
             )?;
         }
 
-        Ok(ids)
+        // Remove orphaned cards (in DB but no longer in the file)
+        let orphans: Vec<i64> = existing_db_ids.difference(&seen_db_ids).copied().collect();
+        for orphan_id in &orphans {
+            tx.execute("DELETE FROM cards WHERE id = ?1", params![orphan_id])?;
+        }
+
+        tx.commit()?;
+        Ok(ImportDiff { added, updated, removed: orphans.len(), id_assignments })
     }
 
     /// Soft-delete all cards from a specific source file.
@@ -168,9 +192,36 @@ impl SqliteRepository {
         Ok(count)
     }
 
-    /// Insert a review record.
-    pub fn insert_review(&self, review: &Review) -> Result<i64> {
-        self.conn.execute(
+    /// Remove a deck entirely from the database (cards + settings).
+    /// The markdown file on disk is not touched.
+    pub fn remove_deck(&self, deck_path: &str) -> Result<usize> {
+        let tx = self.conn.unchecked_transaction()?;
+        // CASCADE handles card_states + reviews
+        let count = tx.execute(
+            "DELETE FROM cards WHERE deck_path = ?1",
+            params![deck_path],
+        )?;
+        tx.execute(
+            "DELETE FROM deck_settings WHERE deck_path = ?1",
+            params![deck_path],
+        )?;
+        tx.commit()?;
+        Ok(count)
+    }
+
+    /// Atomically save card state and insert review in a single transaction.
+    pub fn submit_review_atomic(&self, card_id: i64, state: &CardState, review: &Review) -> Result<i64> {
+        let tx = self.conn.unchecked_transaction()?;
+
+        let status_str = state.status.as_str();
+        let due_str = state.due_date.map(|d| d.to_rfc3339());
+
+        tx.execute(
+            "INSERT OR REPLACE INTO card_states (card_id, status, interval_days, ease_factor, due_date, stability, difficulty, lapses, reviews_count) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![card_id, status_str, state.interval_days, state.ease_factor, due_str, state.stability, state.difficulty, state.lapses, state.reviews_count],
+        )?;
+
+        tx.execute(
             "INSERT INTO reviews (card_id, reviewed_at, rating, rating_scale, answer_mode,
                 typed_answer, was_correct, time_taken_ms, interval_before, interval_after,
                 ease_before, ease_after, algorithm)
@@ -191,7 +242,10 @@ impl SqliteRepository {
                 review.algorithm,
             ],
         )?;
-        Ok(self.conn.last_insert_rowid())
+
+        let review_id = tx.last_insert_rowid();
+        tx.commit()?;
+        Ok(review_id)
     }
 }
 
@@ -199,18 +253,9 @@ impl CardRepository for SqliteRepository {
     fn get_card(&self, id: i64) -> Result<Option<Card>> {
         self.conn
             .query_row(
-                "SELECT id, deck_path, question_text, answer_text, source_file, deleted_at FROM cards WHERE id = ?1",
+                "SELECT id, deck_path, question_text, answer_text, source_file FROM cards WHERE id = ?1 AND deleted_at IS NULL",
                 params![id],
-                |row| {
-                    Ok(Card {
-                        id: row.get(0)?,
-                        deck_path: row.get(1)?,
-                        question: row.get(2)?,
-                        answer: row.get(3)?,
-                        source_file: row.get(4)?,
-                        deleted_at: row.get::<_, Option<String>>(5)?.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc))),
-                    })
-                },
+                Self::row_to_card,
             )
             .optional()
             .map_err(Into::into)
@@ -305,13 +350,7 @@ impl StateRepository for SqliteRepository {
                 params![card_id],
                 |row| {
                     let status_str: String = row.get(0)?;
-                    let status = match status_str.as_str() {
-                        "new" => CardStatus::New,
-                        "learning" => CardStatus::Learning,
-                        "review" => CardStatus::Review,
-                        "relearning" => CardStatus::Relearning,
-                        _ => CardStatus::New,
-                    };
+                    let status = status_str.parse::<CardStatus>().unwrap_or_default();
                     let due_str: Option<String> = row.get(3)?;
                     let due_date = due_str.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
 
@@ -332,12 +371,7 @@ impl StateRepository for SqliteRepository {
     }
 
     fn save_card_state(&self, card_id: i64, state: &CardState) -> Result<()> {
-        let status_str = match state.status {
-            CardStatus::New => "new",
-            CardStatus::Learning => "learning",
-            CardStatus::Review => "review",
-            CardStatus::Relearning => "relearning",
-        };
+        let status_str = state.status.as_str();
         let due_str = state.due_date.map(|d| d.to_rfc3339());
 
         self.conn.execute(
@@ -633,31 +667,33 @@ impl StatsRepository for SqliteRepository {
             |row| row.get(0),
         ).unwrap_or(0);
 
-        // Calculate streak (consecutive days with reviews)
+        // Calculate streak: fetch all distinct review dates, count consecutive days in Rust
         let mut streak_days = 0usize;
-        let mut current_date = today_date;
+        {
+            let mut stmt = self.conn.prepare(
+                "SELECT DISTINCT date(reviewed_at) as d FROM reviews ORDER BY d DESC",
+            )?;
+            let dates: Vec<String> = stmt
+                .query_map([], |row| row.get::<_, String>(0))?
+                .collect::<std::result::Result<Vec<_>, _>>()?;
 
-        loop {
-            let date_str = current_date.format("%Y-%m-%d").to_string();
-            let count: usize = self.conn.query_row(
-                "SELECT COUNT(*) FROM reviews WHERE date(reviewed_at) = ?1",
-                params![date_str],
-                |row| row.get(0),
-            ).unwrap_or(0);
+            let mut expected = today_date;
+            let mut idx = 0;
 
-            if count > 0 {
-                streak_days += 1;
-                current_date = current_date.pred_opt().unwrap_or(current_date);
-            } else if streak_days == 0 && current_date == today_date {
-                // Allow for today not having reviews yet
-                current_date = current_date.pred_opt().unwrap_or(current_date);
-            } else {
-                break;
+            // Allow for today not having reviews yet
+            if dates.first().map(|d| d.as_str()) != Some(&today) {
+                expected = expected.pred_opt().unwrap_or(expected);
             }
 
-            // Safety limit
-            if streak_days > 365 {
-                break;
+            while idx < dates.len() {
+                let expected_str = expected.format("%Y-%m-%d").to_string();
+                if dates[idx] == expected_str {
+                    streak_days += 1;
+                    expected = expected.pred_opt().unwrap_or(expected);
+                    idx += 1;
+                } else {
+                    break;
+                }
             }
         }
 
@@ -682,27 +718,37 @@ impl StatsRepository for SqliteRepository {
     }
 
     fn get_calendar_data(&self, days: usize, daily_reset_hour: u32) -> Result<Vec<CalendarData>> {
-        let mut data = Vec::new();
         let today = get_adjusted_today(daily_reset_hour);
+        let start_date = today - chrono::Duration::days(days as i64 - 1);
+        let start_str = start_date.format("%Y-%m-%d").to_string();
+        let today_str = today.format("%Y-%m-%d").to_string();
 
-        for i in 0..days {
-            let date = today - chrono::Duration::days(i as i64);
-            let date_str = date.format("%Y-%m-%d").to_string();
+        // Single query: group review counts by date
+        let mut stmt = self.conn.prepare(
+            "SELECT date(reviewed_at) as review_date, COUNT(*) as review_count
+             FROM reviews
+             WHERE date(reviewed_at) BETWEEN ?1 AND ?2
+             GROUP BY date(reviewed_at)",
+        )?;
 
-            let reviews: usize = self.conn.query_row(
-                "SELECT COUNT(*) FROM reviews WHERE date(reviewed_at) = ?1",
-                params![date_str],
-                |row| row.get(0),
-            ).unwrap_or(0);
-
-            data.push(CalendarData {
-                date: date_str,
-                reviews,
-            });
+        let mut review_map: HashMap<String, usize> = HashMap::new();
+        let rows = stmt.query_map(params![start_str, today_str], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, usize>(1)?))
+        })?;
+        for row in rows {
+            let (date, count) = row?;
+            review_map.insert(date, count);
         }
 
-        // Reverse so oldest is first
-        data.reverse();
+        // Fill in all days (including zero-review days)
+        let mut data = Vec::with_capacity(days);
+        for i in 0..days {
+            let date = start_date + chrono::Duration::days(i as i64);
+            let date_str = date.format("%Y-%m-%d").to_string();
+            let reviews = review_map.get(&date_str).copied().unwrap_or(0);
+            data.push(CalendarData { date: date_str, reviews });
+        }
+
         Ok(data)
     }
 }

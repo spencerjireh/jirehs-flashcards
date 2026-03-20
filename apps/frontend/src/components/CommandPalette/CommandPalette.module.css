@@ -1,0 +1,110 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(14, 16, 12, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease-out);
+}
+
+.backdrop[data-open] {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.palette {
+  position: fixed;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px) scale(0.98);
+  z-index: 201;
+  width: 520px;
+  max-height: 400px;
+  background: var(--bg-card, var(--bg-secondary));
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(223, 223, 193, 0.04);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.2s var(--ease-out),
+    transform 0.25s var(--ease-spring);
+}
+
+.palette[data-open] {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.inputWrap {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.input {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-dim, var(--text-muted));
+}
+
+.results {
+  padding: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.item:hover,
+.item[data-selected] {
+  background: var(--bg-elevated, var(--bg-tertiary));
+  color: var(--text);
+}
+
+.itemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  opacity: 0.5;
+}
+
+.itemKey {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim, var(--text-muted));
+}
+
+.empty {
+  padding: 20px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}

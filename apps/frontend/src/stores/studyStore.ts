@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AnswerMode, CompareAnswerResponse } from '@jirehs-flashcards/shared-types';
+import type { AnswerMode, Card, CompareAnswerResponse } from '@jirehs-flashcards/shared-types';
 
 interface StudyState {
   currentIndex: number;
@@ -8,6 +8,7 @@ interface StudyState {
   answerMode: AnswerMode;
   typedAnswer: string;
   compareResult: CompareAnswerResponse | null;
+  sessionCards: Card[] | null;
   setCurrentIndex: (index: number) => void;
   setRevealed: (revealed: boolean) => void;
   startTimer: () => void;
@@ -15,6 +16,7 @@ interface StudyState {
   setAnswerMode: (mode: AnswerMode) => void;
   setTypedAnswer: (answer: string) => void;
   setCompareResult: (result: CompareAnswerResponse | null) => void;
+  setSessionCards: (cards: Card[]) => void;
   reset: () => void;
   nextCard: () => void;
 }
@@ -26,6 +28,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   answerMode: 'flip',
   typedAnswer: '',
   compareResult: null,
+  sessionCards: null,
 
   setCurrentIndex: (index) => set({ currentIndex: index }),
   setRevealed: (revealed) => set({ revealed }),
@@ -40,6 +43,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   setAnswerMode: (mode) => set({ answerMode: mode }),
   setTypedAnswer: (answer) => set({ typedAnswer: answer }),
   setCompareResult: (result) => set({ compareResult: result }),
+  setSessionCards: (cards) => set({ sessionCards: cards }),
 
   reset: () =>
     set({
@@ -48,6 +52,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       startTime: null,
       typedAnswer: '',
       compareResult: null,
+      sessionCards: null,
     }),
 
   nextCard: () => {

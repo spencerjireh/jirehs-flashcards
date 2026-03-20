@@ -3,6 +3,9 @@
 use crate::types::MatchingMode;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "ts-export")]
+use ts_rs::TS;
+
 /// Result of comparing a typed answer to the correct answer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchResult {
@@ -125,6 +128,8 @@ pub fn normalized_similarity(a: &str, b: &str) -> f64 {
 /// Generate a diff between two strings for display.
 /// Returns a list of (text, diff_type) tuples.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub enum DiffType {
     /// Text is the same in both strings.
     Same,
@@ -135,6 +140,8 @@ pub enum DiffType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub struct DiffSegment {
     pub text: String,
     pub diff_type: DiffType,

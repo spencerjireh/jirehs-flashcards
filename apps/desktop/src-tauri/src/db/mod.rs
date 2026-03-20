@@ -6,7 +6,8 @@ pub mod repository;
 pub mod schema;
 
 pub use error::DbError;
+pub use flashcard_core::types::Review;
 pub use repository::{
-    CalendarData, CardRepository, DeckRepository, DeckStats, Review, SettingsRepository,
-    SqliteRepository, StateRepository, StatsRepository, StudyStats, WatcherRepository,
+    CardRepository, DeckRepository, SettingsRepository, SqliteRepository, StateRepository,
+    StatsRepository, WatcherRepository,
 };

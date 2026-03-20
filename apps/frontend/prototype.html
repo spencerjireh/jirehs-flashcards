@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jireh's Flashcards -- Redesign Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   EVOLVED DESIGN TOKENS
+   ============================================================ */
+:root {
+  --bg-void: #0e100c;
+  --bg: #131610;
+  --bg-surface: #171a14;
+  --bg-card: #1e211a;
+  --bg-card-edge: #252820;
+  --bg-elevated: #2a2d24;
+
+  --text: #e2e0c8;
+  --text-muted: #8a8472;
+  --text-dim: #5a5647;
+
+  --accent: #c8a84e;
+  --accent-hover: #d4b85e;
+  --accent-light: #e0c96e;
+  --accent-glow: rgba(200, 168, 78, 0.25);
+  --accent-glow-strong: rgba(200, 168, 78, 0.4);
+
+  --success: #5a9e6f;
+  --warning: #d4a037;
+  --danger: #c75a3a;
+
+  --border: rgba(223, 223, 193, 0.06);
+  --border-hover: rgba(223, 223, 193, 0.12);
+
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-gravity: cubic-bezier(0.55, 0, 1, 0.45);
+}
+
+/* ============================================================
+   RESET
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-void);
+  color: var(--text);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ============================================================
+   NOISE TEXTURE OVERLAY
+   ============================================================ */
+.noise {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+}
+
+/* ============================================================
+   SPATIAL DECK VIEW -- PANNABLE SURFACE
+   ============================================================ */
+#surface-container {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  background: var(--bg);
+  /* Dot grid for spatial orientation */
+  background-image: radial-gradient(circle, rgba(223, 223, 193, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transition: opacity 0.5s var(--ease-out), filter 0.5s var(--ease-out);
+}
+
+#surface-container.dragging { cursor: grabbing; }
+#surface-container.hidden { opacity: 0; filter: blur(8px); pointer-events: none; }
+
+#surface {
+  position: absolute;
+  width: 3000px;
+  height: 2000px;
+  transition: transform 0.08s linear;
+}
+
+/* Subtle vignette on edges */
+#surface-container::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 50%, var(--bg-void) 100%);
+  z-index: 2;
+}
+
+/* ============================================================
+   CARD STACK COMPONENT
+   ============================================================ */
+.stack {
+  position: absolute;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease-spring), filter 0.3s var(--ease-out);
+}
+
+.stack:hover {
+  transform: translateY(-6px) scale(1.02);
+  z-index: 10;
+}
+
+.stack-body {
+  position: relative;
+  width: 200px;
+  height: 130px;
+}
+
+/* Card layers -- physical stack depth */
+.stack-layer {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-card-edge);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.stack-layer:nth-child(1) { transform: translate(5px, 5px); opacity: 0.25; }
+.stack-layer:nth-child(2) { transform: translate(3.5px, 3.5px); opacity: 0.4; }
+.stack-layer:nth-child(3) { transform: translate(2px, 2px); opacity: 0.6; }
+
+/* Top card */
+.stack-top {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.2),
+    0 8px 24px rgba(0,0,0,0.15);
+  transition:
+    box-shadow 0.3s var(--ease-out),
+    border-color 0.3s var(--ease-out);
+}
+
+.stack:hover .stack-top {
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.3),
+    0 12px 32px rgba(0,0,0,0.2);
+  border-color: rgba(223, 223, 193, 0.15);
+}
+
+/* Due stack glow */
+.stack.due .stack-top {
+  border-color: rgba(200, 168, 78, 0.2);
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.2),
+    0 8px 24px rgba(0,0,0,0.15),
+    0 0 30px -10px var(--accent-glow);
+}
+
+.stack.due:hover .stack-top {
+  border-color: rgba(200, 168, 78, 0.35);
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.3),
+    0 12px 32px rgba(0,0,0,0.2),
+    0 0 40px -8px var(--accent-glow-strong);
+}
+
+/* Gold accent bar on due stacks */
+.stack.due .stack-top::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: -1px;
+  width: 3px;
+  height: 30px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-light));
+  border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.stack-name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.stack-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.stack-count {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+
+.stack-due-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+}
+
+/* ============================================================
+   STUDY MODE OVERLAY
+   ============================================================ */
+#study-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s var(--ease-out);
+}
+
+#study-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Study card -- the centerpiece */
+.study-card {
+  position: relative;
+  max-width: 680px;
+  width: 90%;
+  min-height: 200px;
+  transition: transform 0.35s var(--ease-spring), opacity 0.3s var(--ease-out);
+}
+
+.study-card.falling {
+  transition: transform 0.45s var(--ease-gravity), opacity 0.4s ease-in;
+  transform: translateY(120vh) rotate(var(--fall-rotate, 5deg));
+  opacity: 0;
+}
+
+.study-card.entering {
+  animation: cardEnter 0.35s var(--ease-out) both;
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.study-question {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  line-height: 1.4;
+  color: var(--text);
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.study-divider {
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 2rem auto;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out);
+}
+
+.study-divider.visible { opacity: 1; }
+
+.study-answer {
+  font-family: var(--font-body);
+  font-size: 1.3rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  text-align: center;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.35s var(--ease-out), opacity 0.3s var(--ease-out);
+}
+
+.study-answer.visible {
+  max-height: 300px;
+  opacity: 1;
+}
+
+/* Key hints -- very subtle, bottom of screen */
+.key-hints {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 32px;
+  z-index: 101;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out);
+}
+
+.key-hints.visible { opacity: 1; }
+
+.key-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.key-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border-hover);
+  border-radius: 4px;
+}
+
+.key-hint.active kbd {
+  color: var(--accent);
+  border-color: var(--accent-glow);
+  background: rgba(200, 168, 78, 0.08);
+}
+
+/* Rating flash feedback */
+.rating-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+.rating-flash.active { opacity: 1; }
+.rating-flash.again { background: radial-gradient(ellipse at center, rgba(199, 90, 58, 0.06), transparent 60%); }
+.rating-flash.hard { background: radial-gradient(ellipse at center, rgba(212, 160, 55, 0.06), transparent 60%); }
+.rating-flash.good { background: radial-gradient(ellipse at center, rgba(90, 158, 111, 0.06), transparent 60%); }
+.rating-flash.easy { background: radial-gradient(ellipse at center, rgba(200, 168, 78, 0.08), transparent 60%); }
+
+/* ============================================================
+   AMBIENT PROGRESS -- Miniature Stack
+   ============================================================ */
+.ambient-stack {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 102;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out);
+}
+
+.ambient-stack.visible { opacity: 1; }
+
+.ambient-layers {
+  position: relative;
+  width: 44px;
+  height: 30px;
+}
+
+.ambient-layer {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 40px;
+  height: 26px;
+  background: var(--bg-card-edge);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  transform: translateX(-50%);
+  transition: all 0.4s var(--ease-out);
+}
+
+.ambient-layer:nth-child(1) { transform: translateX(-50%) translateY(4px); opacity: 0.3; }
+.ambient-layer:nth-child(2) { transform: translateX(-50%) translateY(2px); opacity: 0.5; }
+.ambient-layer:nth-child(3) { transform: translateX(-50%) translateY(0); opacity: 0.8; background: var(--bg-card); }
+
+.ambient-count {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+/* ============================================================
+   COMMAND PALETTE
+   ============================================================ */
+#palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(14, 16, 12, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease-out);
+}
+
+#palette-backdrop.active { opacity: 1; pointer-events: all; }
+
+#palette {
+  position: fixed;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px) scale(0.98);
+  z-index: 201;
+  width: 520px;
+  max-height: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(223, 223, 193, 0.04);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.2s var(--ease-out),
+    transform 0.25s var(--ease-spring);
+}
+
+#palette.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.palette-input-wrap {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.palette-input {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.palette-input::placeholder { color: var(--text-dim); }
+
+.palette-results {
+  padding: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.palette-item:hover, .palette-item.selected {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.palette-item-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.5;
+}
+
+.palette-item-key {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* ============================================================
+   SESSION COMPLETE
+   ============================================================ */
+.session-complete {
+  text-align: center;
+  animation: cardEnter 0.5s var(--ease-out) both;
+}
+
+.session-complete h2 {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.session-complete p {
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.session-complete button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.75rem 1.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--bg);
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 12px var(--accent-glow);
+  transition: transform 0.15s var(--ease-spring), box-shadow 0.25s;
+}
+
+.session-complete button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px var(--accent-glow-strong);
+}
+
+/* ============================================================
+   SURFACE TITLE -- Subtle brand in corner
+   ============================================================ */
+.surface-brand {
+  position: fixed;
+  top: 20px;
+  left: 24px;
+  z-index: 5;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.surface-brand:hover { opacity: 0.7; }
+
+.surface-brand-name {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.surface-brand-hint {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Cmd+K hint in corner */
+.cmdk-hint {
+  position: fixed;
+  top: 22px;
+  right: 24px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  opacity: 0.35;
+  transition: opacity 0.3s;
+}
+
+.cmdk-hint:hover { opacity: 0.7; cursor: pointer; }
+
+.cmdk-hint kbd {
+  padding: 2px 5px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 0.6rem;
+}
+</style>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Surface brand -->
+<div class="surface-brand" id="surfaceBrand">
+  <span class="surface-brand-name">Jireh's Flashcards</span>
+  <span class="surface-brand-hint">drag to explore</span>
+</div>
+
+<div class="cmdk-hint" id="cmdkHint" onclick="togglePalette()">
+  <kbd>Cmd</kbd><kbd>K</kbd>
+</div>
+
+<!-- SPATIAL DECK SURFACE -->
+<div id="surface-container">
+  <div id="surface"></div>
+</div>
+
+<!-- STUDY MODE -->
+<div id="study-overlay">
+  <div id="study-content"></div>
+  <div class="rating-flash" id="ratingFlash"></div>
+  <div class="key-hints" id="keyHints">
+    <div class="key-hint" data-action="flip"><kbd>Space</kbd> flip</div>
+    <div class="key-hint" data-action="again"><kbd>J</kbd> again</div>
+    <div class="key-hint" data-action="hard"><kbd>K</kbd> hard</div>
+    <div class="key-hint" data-action="good"><kbd>L</kbd> good</div>
+    <div class="key-hint" data-action="easy"><kbd>;</kbd> easy</div>
+  </div>
+  <div class="ambient-stack" id="ambientStack">
+    <div class="ambient-layers">
+      <div class="ambient-layer"></div>
+      <div class="ambient-layer"></div>
+      <div class="ambient-layer"></div>
+    </div>
+    <div class="ambient-count" id="ambientCount"></div>
+  </div>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div id="palette-backdrop" onclick="togglePalette()"></div>
+<div id="palette">
+  <div class="palette-input-wrap">
+    <input class="palette-input" id="paletteInput" type="text" placeholder="Type a command..." autocomplete="off">
+  </div>
+  <div class="palette-results" id="paletteResults"></div>
+</div>
+
+<script>
+// ============================================================
+// DECK DATA (mock)
+// ============================================================
+const DECKS = [
+  { id: 1, name: 'Mathematics', cards: 42, due: 12, x: 280, y: 180 },
+  { id: 2, name: 'Japanese N3', cards: 156, due: 28, x: 620, y: 120 },
+  { id: 3, name: 'Systems Design', cards: 67, due: 0, x: 1000, y: 200 },
+  { id: 4, name: 'Rust Ownership', cards: 34, due: 8, x: 380, y: 420 },
+  { id: 5, name: 'AWS Solutions Architect', cards: 203, due: 45, x: 750, y: 380 },
+  { id: 6, name: 'Music Theory', cards: 89, due: 3, x: 1100, y: 460 },
+  { id: 7, name: 'Philosophy', cards: 23, due: 0, x: 180, y: 650 },
+  { id: 8, name: 'Linear Algebra', cards: 78, due: 15, x: 560, y: 620 },
+  { id: 9, name: 'TypeScript Patterns', cards: 45, due: 7, x: 930, y: 680 },
+  { id: 10, name: 'Biochemistry', cards: 134, due: 22, x: 1250, y: 320 },
+  { id: 11, name: 'Spanish Vocab', cards: 312, due: 0, x: 1350, y: 580 },
+  { id: 12, name: 'Discrete Math', cards: 56, due: 4, x: 1500, y: 200 },
+  { id: 13, name: 'Art History', cards: 91, due: 0, x: 1420, y: 750 },
+];
+
+const SAMPLE_CARDS = [
+  { q: 'What is the derivative of sin(x)?', a: 'cos(x)' },
+  { q: 'Define a topological space.', a: 'A set X with a collection of open subsets closed under finite intersections and arbitrary unions.' },
+  { q: 'What is the eigenvalue equation?', a: 'Av = lambda * v, where A is a matrix and v is a non-zero vector.' },
+  { q: 'State the fundamental theorem of calculus.', a: 'If f is continuous on [a,b], then the integral of f from a to b equals F(b) - F(a).' },
+  { q: 'What is a monad?', a: 'A monoid in the category of endofunctors.' },
+];
+
+// ============================================================
+// SURFACE RENDERING
+// ============================================================
+const surface = document.getElementById('surface');
+const surfaceContainer = document.getElementById('surface-container');
+
+function renderStacks() {
+  surface.innerHTML = '';
+  DECKS.forEach(deck => {
+    const layerCount = Math.min(Math.floor(deck.cards / 15) + 1, 4);
+    const isDue = deck.due > 0;
+
+    const stackEl = document.createElement('div');
+    stackEl.className = `stack${isDue ? ' due' : ''}`;
+    stackEl.style.left = deck.x + 'px';
+    stackEl.style.top = deck.y + 'px';
+    stackEl.dataset.deckId = deck.id;
+
+    let layersHtml = '';
+    for (let i = 0; i < Math.min(layerCount, 3); i++) {
+      layersHtml += '<div class="stack-layer"></div>';
+    }
+
+    stackEl.innerHTML = `
+      <div class="stack-body">
+        ${layersHtml}
+        <div class="stack-top">
+          <div class="stack-name">${deck.name}</div>
+          <div class="stack-meta">
+            <span class="stack-count">${deck.cards} cards</span>
+            ${isDue ? `<span class="stack-due-badge">${deck.due} due</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    stackEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      enterStudyMode(deck);
+    });
+
+    surface.appendChild(stackEl);
+  });
+}
+
+renderStacks();
+
+// ============================================================
+// PAN WITH MOMENTUM
+// ============================================================
+let panX = -400, panY = -200;
+let isDragging = false;
+let dragStartX, dragStartY, panStartX, panStartY;
+let velocityX = 0, velocityY = 0;
+let lastMoveX = 0, lastMoveY = 0;
+let lastMoveTime = 0;
+let momentumFrame = null;
+
+function updateSurface() {
+  surface.style.transform = `translate(${panX}px, ${panY}px)`;
+}
+updateSurface();
+
+surfaceContainer.addEventListener('mousedown', (e) => {
+  if (e.target.closest('.stack')) return;
+  isDragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  panStartX = panX;
+  panStartY = panY;
+  lastMoveX = e.clientX;
+  lastMoveY = e.clientY;
+  lastMoveTime = Date.now();
+  velocityX = 0;
+  velocityY = 0;
+  if (momentumFrame) cancelAnimationFrame(momentumFrame);
+  surfaceContainer.classList.add('dragging');
+  surface.style.transition = 'none';
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+  panX = panStartX + dx;
+  panY = panStartY + dy;
+  updateSurface();
+
+  const now = Date.now();
+  const dt = now - lastMoveTime;
+  if (dt > 0) {
+    velocityX = (e.clientX - lastMoveX) / dt * 16;
+    velocityY = (e.clientY - lastMoveY) / dt * 16;
+  }
+  lastMoveX = e.clientX;
+  lastMoveY = e.clientY;
+  lastMoveTime = now;
+});
+
+window.addEventListener('mouseup', () => {
+  if (!isDragging) return;
+  isDragging = false;
+  surfaceContainer.classList.remove('dragging');
+  surface.style.transition = 'transform 0.08s linear';
+
+  // Apply momentum
+  function momentum() {
+    velocityX *= 0.95;
+    velocityY *= 0.95;
+    if (Math.abs(velocityX) < 0.1 && Math.abs(velocityY) < 0.1) return;
+    panX += velocityX;
+    panY += velocityY;
+    updateSurface();
+    momentumFrame = requestAnimationFrame(momentum);
+  }
+  if (Math.abs(velocityX) > 0.5 || Math.abs(velocityY) > 0.5) {
+    momentum();
+  }
+});
+
+// ============================================================
+// STUDY MODE
+// ============================================================
+const studyOverlay = document.getElementById('study-overlay');
+const studyContent = document.getElementById('study-content');
+const keyHints = document.getElementById('keyHints');
+const ambientStackEl = document.getElementById('ambient-stack');
+const ambientCount = document.getElementById('ambientCount');
+const ratingFlash = document.getElementById('ratingFlash');
+const surfaceBrand = document.getElementById('surfaceBrand');
+const cmdkHint = document.getElementById('cmdkHint');
+
+let studyState = null; // { deck, cards, index, revealed }
+
+function enterStudyMode(deck) {
+  const cards = [...SAMPLE_CARDS];
+  studyState = { deck, cards, index: 0, revealed: false, total: cards.length };
+
+  surfaceContainer.classList.add('hidden');
+  surfaceBrand.style.opacity = '0';
+  cmdkHint.style.opacity = '0';
+  studyOverlay.classList.add('active');
+  keyHints.classList.add('visible');
+  ambientStackEl.classList.add('visible');
+
+  renderStudyCard();
+  updateAmbient();
+}
+
+function exitStudyMode() {
+  studyOverlay.classList.remove('active');
+  keyHints.classList.remove('visible');
+  ambientStackEl.classList.remove('visible');
+  studyState = null;
+
+  setTimeout(() => {
+    surfaceContainer.classList.remove('hidden');
+    surfaceBrand.style.opacity = '';
+    cmdkHint.style.opacity = '';
+    studyContent.innerHTML = '';
+  }, 400);
+}
+
+function renderStudyCard() {
+  if (!studyState) return;
+
+  if (studyState.index >= studyState.cards.length) {
+    showSessionComplete();
+    return;
+  }
+
+  const card = studyState.cards[studyState.index];
+  studyState.revealed = false;
+
+  studyContent.innerHTML = `
+    <div class="study-card entering" id="currentCard">
+      <div class="study-question">${card.q}</div>
+      <div class="study-divider" id="studyDivider"></div>
+      <div class="study-answer" id="studyAnswer">${card.a}</div>
+    </div>
+  `;
+
+  updateKeyHints(false);
+}
+
+function revealAnswer() {
+  if (!studyState || studyState.revealed) return;
+  studyState.revealed = true;
+
+  document.getElementById('studyDivider').classList.add('visible');
+  document.getElementById('studyAnswer').classList.add('visible');
+  updateKeyHints(true);
+}
+
+function rateCard(rating) {
+  if (!studyState || !studyState.revealed) return;
+
+  // Flash feedback
+  const flashClass = ['again', 'hard', 'good', 'easy'][rating];
+  ratingFlash.className = `rating-flash active ${flashClass}`;
+  setTimeout(() => ratingFlash.className = 'rating-flash', 200);
+
+  // Highlight active key hint briefly
+  const actions = ['again', 'hard', 'good', 'easy'];
+  const hintEl = document.querySelector(`.key-hint[data-action="${actions[rating]}"]`);
+  if (hintEl) {
+    hintEl.classList.add('active');
+    setTimeout(() => hintEl.classList.remove('active'), 300);
+  }
+
+  // Card falls away
+  const cardEl = document.getElementById('currentCard');
+  const rotate = (Math.random() * 10 - 5).toFixed(1);
+  cardEl.style.setProperty('--fall-rotate', rotate + 'deg');
+  cardEl.classList.add('falling');
+  cardEl.classList.remove('entering');
+
+  studyState.index++;
+  updateAmbient();
+
+  // Next card after fall animation
+  setTimeout(() => {
+    renderStudyCard();
+  }, 350);
+}
+
+function showSessionComplete() {
+  keyHints.classList.remove('visible');
+  ambientStackEl.classList.remove('visible');
+
+  studyContent.innerHTML = `
+    <div class="session-complete">
+      <h2>Session Complete</h2>
+      <p>${studyState.total} cards reviewed</p>
+      <button onclick="exitStudyMode()">Return to Decks</button>
+    </div>
+  `;
+}
+
+function updateKeyHints(revealed) {
+  const flipHint = document.querySelector('.key-hint[data-action="flip"]');
+  const ratingHints = document.querySelectorAll('.key-hint:not([data-action="flip"])');
+
+  if (flipHint) flipHint.style.opacity = revealed ? '0.3' : '1';
+  ratingHints.forEach(h => h.style.opacity = revealed ? '1' : '0.3');
+}
+
+function updateAmbient() {
+  if (!studyState) return;
+  const remaining = studyState.cards.length - studyState.index;
+  ambientCount.textContent = remaining + ' left';
+
+  // Adjust layer visibility based on remaining
+  const layers = ambientStackEl.querySelectorAll('.ambient-layer');
+  const ratio = remaining / studyState.total;
+  layers[0].style.opacity = ratio > 0.6 ? '0.3' : '0';
+  layers[1].style.opacity = ratio > 0.3 ? '0.5' : '0';
+  layers[2].style.opacity = remaining > 0 ? '0.8' : '0.2';
+}
+
+// ============================================================
+// KEYBOARD HANDLING
+// ============================================================
+window.addEventListener('keydown', (e) => {
+  // Command palette
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    togglePalette();
+    return;
+  }
+
+  // Escape
+  if (e.key === 'Escape') {
+    if (document.getElementById('palette').classList.contains('active')) {
+      togglePalette();
+    } else if (studyState) {
+      exitStudyMode();
+    }
+    return;
+  }
+
+  // Study mode keys
+  if (studyState && !document.getElementById('palette').classList.contains('active')) {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      revealAnswer();
+    } else if (e.key === 'j') {
+      rateCard(0); // Again
+    } else if (e.key === 'k') {
+      rateCard(1); // Hard
+    } else if (e.key === 'l') {
+      rateCard(2); // Good
+    } else if (e.key === ';') {
+      rateCard(3); // Easy
+    }
+  }
+});
+
+// ============================================================
+// COMMAND PALETTE
+// ============================================================
+const paletteBackdrop = document.getElementById('palette-backdrop');
+const palette = document.getElementById('palette');
+const paletteInput = document.getElementById('paletteInput');
+const paletteResults = document.getElementById('paletteResults');
+
+const COMMANDS = [
+  { label: 'Import Directory...', icon: 'folder', key: '' },
+  { label: 'Import File...', icon: 'file', key: '' },
+  { label: 'Settings', icon: 'gear', key: '' },
+  { label: 'Statistics', icon: 'chart', key: '' },
+  { label: 'Toggle Dark/Light', icon: 'sun', key: '' },
+];
+
+// Add deck-specific commands
+DECKS.forEach(d => {
+  COMMANDS.push({ label: `Study: ${d.name}`, icon: 'cards', key: '', deckId: d.id });
+});
+
+function togglePalette() {
+  const isOpen = palette.classList.contains('active');
+  if (isOpen) {
+    palette.classList.remove('active');
+    paletteBackdrop.classList.remove('active');
+    paletteInput.value = '';
+  } else {
+    palette.classList.add('active');
+    paletteBackdrop.classList.add('active');
+    paletteInput.focus();
+    renderPaletteResults('');
+  }
+}
+
+function renderPaletteResults(query) {
+  const q = query.toLowerCase();
+  const filtered = COMMANDS.filter(c => c.label.toLowerCase().includes(q));
+
+  paletteResults.innerHTML = filtered.slice(0, 8).map((cmd, i) => `
+    <div class="palette-item${i === 0 ? ' selected' : ''}" data-index="${i}" onclick="executePaletteCommand(${COMMANDS.indexOf(cmd)})">
+      <span class="palette-item-icon">${getIcon(cmd.icon)}</span>
+      <span>${cmd.label}</span>
+      ${cmd.key ? `<span class="palette-item-key">${cmd.key}</span>` : ''}
+    </div>
+  `).join('');
+}
+
+function executePaletteCommand(index) {
+  const cmd = COMMANDS[index];
+  togglePalette();
+  if (cmd.deckId) {
+    const deck = DECKS.find(d => d.id === cmd.deckId);
+    if (deck) enterStudyMode(deck);
+  }
+}
+
+paletteInput.addEventListener('input', (e) => {
+  renderPaletteResults(e.target.value);
+});
+
+function getIcon(type) {
+  const icons = {
+    folder: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>',
+    file: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+    gear: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+    chart: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    cards: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="16" height="14" rx="2"/><path d="M6 2h12a2 2 0 012 2v12"/></svg>',
+    sun: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
+  };
+  return icons[type] || '';
+}
+</script>
+</body>
+</html>

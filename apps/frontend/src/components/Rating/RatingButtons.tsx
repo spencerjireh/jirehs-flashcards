@@ -1,5 +1,6 @@
 import type { Rating, RatingScale } from '@jirehs-flashcards/shared-types';
 import { TwoPointRatingButtons } from './TwoPointRatingButtons';
+import styles from './RatingButtons.module.css';
 
 interface RatingButtonsProps {
   onRate: (rating: Rating) => void;
@@ -20,12 +21,12 @@ export function RatingButtons({ onRate, disabled, ratingScale = '4point' }: Rati
   }
 
   return (
-    <div className="rating-buttons">
+    <div className={styles['rating-buttons']}>
       {fourPointRatings.map(({ value, label, color }) => (
         <button
           key={value}
           type="button"
-          className="rating-button"
+          className={styles['rating-button']}
           style={{ '--rating-color': color } as React.CSSProperties}
           onClick={() => onRate(value)}
           disabled={disabled}

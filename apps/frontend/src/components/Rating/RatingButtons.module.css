@@ -1,0 +1,38 @@
+.rating-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.rating-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  border: 2px solid var(--rating-color, var(--border-hover));
+  border-radius: var(--radius-sm);
+  color: var(--rating-color, var(--text));
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.rating-button:hover {
+  background: color-mix(in srgb, var(--rating-color, var(--accent)) 15%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--rating-color, var(--accent)) 20%, transparent);
+}
+
+/* Two-point rating buttons */
+.two-point {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.rating-wrong {
+  --rating-color: var(--danger);
+}
+
+.rating-correct {
+  --rating-color: var(--success);
+}

@@ -4,7 +4,7 @@ mod parser;
 mod state;
 mod watcher;
 
-use commands::deck::{get_deck, get_deck_cards, import_directory, import_file, list_decks};
+use commands::deck::{get_deck, get_deck_cards, import_directory, import_file, list_decks, remove_deck};
 use commands::settings::{
     delete_deck_settings, get_deck_settings, get_effective_settings, get_global_settings,
     save_deck_settings, save_global_settings,
@@ -97,12 +97,22 @@ pub fn run() {
 
                     // Scan after releasing the watcher lock to import files
                     // added while the app was closed
-                    for dir_str in &dirs {
-                        let path = PathBuf::from(dir_str);
-                        if path.is_dir() {
-                            commands::watcher::scan_directory(&path, &app_handle, app_state);
+                    let repo_clone = app_state.repository.clone();
+                    let handle_clone = app_handle.clone();
+                    let dirs_clone = dirs.clone();
+                    tauri::async_runtime::spawn(async move {
+                        for dir_str in &dirs_clone {
+                            let path = PathBuf::from(dir_str);
+                            if path.is_dir() {
+                                commands::watcher::scan_directory(
+                                    path,
+                                    handle_clone.clone(),
+                                    repo_clone.clone(),
+                                )
+                                .await;
+                            }
                         }
-                    }
+                    });
                 }
             }
 
@@ -115,6 +125,7 @@ pub fn run() {
             import_directory,
             get_deck,
             get_deck_cards,
+            remove_deck,
             // Study commands
             get_study_queue,
             submit_review,

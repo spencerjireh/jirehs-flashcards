@@ -249,7 +249,11 @@ pub fn inject_ids(content: &str, id_assignments: &[(usize, i64)]) -> String {
         result.push(line.to_string());
     }
 
-    result.join("\n")
+    let mut output = result.join("\n");
+    if content.ends_with('\n') {
+        output.push('\n');
+    }
+    output
 }
 
 #[cfg(test)]

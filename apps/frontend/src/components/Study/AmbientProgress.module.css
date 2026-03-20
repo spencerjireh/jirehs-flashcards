@@ -1,0 +1,58 @@
+.ambient {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 102;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out);
+}
+
+.ambient[data-visible] {
+  opacity: 1;
+}
+
+.layers {
+  position: relative;
+  width: 44px;
+  height: 30px;
+}
+
+.layer {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 40px;
+  height: 26px;
+  background: var(--bg-card-edge, var(--bg-tertiary));
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  transform: translateX(-50%);
+  transition: all 0.4s var(--ease-out);
+}
+
+.layer:nth-child(1) {
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0.3;
+}
+
+.layer:nth-child(2) {
+  transform: translateX(-50%) translateY(2px);
+  opacity: 0.5;
+}
+
+.layer:nth-child(3) {
+  transform: translateX(-50%) translateY(0);
+  opacity: 0.8;
+  background: var(--bg-card, var(--bg-secondary));
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-dim, var(--text-muted));
+  letter-spacing: 0.05em;
+}

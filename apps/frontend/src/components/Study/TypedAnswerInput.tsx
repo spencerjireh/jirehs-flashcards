@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { Check } from 'iconoir-react';
+import styles from './TypedAnswerInput.module.css';
 
 interface TypedAnswerInputProps {
   value: string;
@@ -32,10 +33,10 @@ export function TypedAnswerInput({
   };
 
   return (
-    <div className="typed-answer-input">
+    <div className={styles['typed-answer-input']}>
       <textarea
         ref={textareaRef}
-        className="form-input typed-answer-textarea"
+        className={`form-input ${styles['typed-answer-textarea']}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -45,7 +46,7 @@ export function TypedAnswerInput({
       />
       <button
         type="button"
-        className="button button-icon typed-answer-submit"
+        className={`button button-icon ${styles['typed-answer-submit']}`}
         onClick={onSubmit}
         disabled={disabled || !value.trim()}
       >

@@ -10,6 +10,7 @@ import type {
   EffectiveSettings,
   GlobalSettings,
   ImportResult,
+  RemoveResult,
   ReviewRequest,
   ReviewResponse,
   StudyQueue,
@@ -23,6 +24,7 @@ export const tauri = {
   getDeckCards: (deckPath: string) => invoke<Card[]>('get_deck_cards', { deckPath }),
   importFile: (filePath: string) => invoke<ImportResult>('import_file', { filePath }),
   importDirectory: (dirPath: string) => invoke<ImportResult>('import_directory', { dirPath }),
+  removeDeck: (deckPath: string) => invoke<RemoveResult>('remove_deck', { deckPath }),
 
   // Study commands
   getStudyQueue: (deckPath?: string) => invoke<StudyQueue>('get_study_queue', { deckPath }),

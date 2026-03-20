@@ -1,10 +1,16 @@
 //! Core types for flashcard application.
 
+use crate::matching::DiffSegment;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "ts-export")]
+use ts_rs::TS;
+
 /// Card learning status.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 #[serde(rename_all = "snake_case")]
 pub enum CardStatus {
     #[default]
@@ -14,8 +20,34 @@ pub enum CardStatus {
     Relearning,
 }
 
+impl CardStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::New => "new",
+            Self::Learning => "learning",
+            Self::Review => "review",
+            Self::Relearning => "relearning",
+        }
+    }
+}
+
+impl std::str::FromStr for CardStatus {
+    type Err = ();
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "new" => Ok(Self::New),
+            "learning" => Ok(Self::Learning),
+            "review" => Ok(Self::Review),
+            "relearning" => Ok(Self::Relearning),
+            _ => Err(()),
+        }
+    }
+}
+
 /// Rating for a review.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 #[serde(rename_all = "snake_case")]
 pub enum Rating {
     Again,
@@ -55,6 +87,8 @@ impl Rating {
 
 /// Card learning state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub struct CardState {
     pub status: CardStatus,
     pub interval_days: f64,
@@ -66,6 +100,7 @@ pub struct CardState {
     pub lapses: u32,
     pub reviews_count: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
     pub due_date: Option<DateTime<Utc>>,
 }
 
@@ -86,7 +121,10 @@ impl Default for CardState {
 
 /// Raw card parsed from markdown (may not have an ID yet).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub struct RawCard {
+    #[cfg_attr(feature = "ts-export", ts(type = "number | null"))]
     pub id: Option<i64>,
     pub question: String,
     pub answer: String,
@@ -95,18 +133,24 @@ pub struct RawCard {
 
 /// Card with assigned ID and metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub struct Card {
+    #[cfg_attr(feature = "ts-export", ts(type = "number"))]
     pub id: i64,
     pub deck_path: String,
     pub question: String,
     pub answer: String,
     pub source_file: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-export", ts(optional))]
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
 /// Rating scale options.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 #[serde(rename_all = "snake_case")]
 pub enum RatingScale {
     #[serde(rename = "4point")]
@@ -118,6 +162,8 @@ pub enum RatingScale {
 
 /// Answer mode options.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 #[serde(rename_all = "snake_case")]
 pub enum AnswerMode {
     #[default]
@@ -127,6 +173,8 @@ pub enum AnswerMode {
 
 /// Matching mode for typed answers.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 #[serde(rename_all = "snake_case")]
 pub enum MatchingMode {
     Exact,
@@ -137,6 +185,8 @@ pub enum MatchingMode {
 
 /// Deck with card counts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub struct Deck {
     pub path: String,
     pub name: String,
@@ -147,6 +197,8 @@ pub struct Deck {
 
 /// Study queue containing cards to study.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub struct StudyQueue {
     pub new_cards: Vec<Card>,
     pub review_cards: Vec<Card>,
@@ -156,6 +208,8 @@ pub struct StudyQueue {
 
 /// Algorithm options.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 #[serde(rename_all = "snake_case")]
 pub enum Algorithm {
     #[default]
@@ -186,6 +240,8 @@ impl std::str::FromStr for Algorithm {
 
 /// Global settings configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub struct GlobalSettings {
     pub algorithm: Algorithm,
     pub rating_scale: RatingScale,
@@ -212,6 +268,8 @@ impl Default for GlobalSettings {
 
 /// Per-deck settings (all fields optional for overrides).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub struct DeckSettings {
     pub deck_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -245,6 +303,8 @@ impl DeckSettings {
 
 /// Effective settings (global merged with deck overrides).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
 pub struct EffectiveSettings {
     pub algorithm: Algorithm,
     pub rating_scale: RatingScale,
@@ -279,4 +339,100 @@ impl EffectiveSettings {
             },
         }
     }
+}
+
+/// Deck statistics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
+pub struct DeckStats {
+    pub total_cards: usize,
+    pub new_cards: usize,
+    pub learning_cards: usize,
+    pub review_cards: usize,
+    pub average_ease: f64,
+    pub average_interval: f64,
+}
+
+/// Overall study statistics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
+pub struct StudyStats {
+    pub reviews_today: usize,
+    pub new_today: usize,
+    pub streak_days: usize,
+    pub retention_rate: f64,
+    pub total_reviews: usize,
+}
+
+/// Calendar data point.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
+pub struct CalendarData {
+    pub date: String,
+    pub reviews: usize,
+}
+
+/// Review record.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
+pub struct Review {
+    #[cfg_attr(feature = "ts-export", ts(type = "number"))]
+    pub id: i64,
+    #[cfg_attr(feature = "ts-export", ts(type = "number"))]
+    pub card_id: i64,
+    pub reviewed_at: String,
+    pub rating: i32,
+    pub rating_scale: String,
+    pub answer_mode: String,
+    pub typed_answer: Option<String>,
+    pub was_correct: Option<bool>,
+    pub time_taken_ms: Option<i32>,
+    pub interval_before: f64,
+    pub interval_after: f64,
+    pub ease_before: f64,
+    pub ease_after: f64,
+    pub algorithm: String,
+}
+
+/// Review request from frontend.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
+pub struct ReviewRequest {
+    #[cfg_attr(feature = "ts-export", ts(type = "number"))]
+    pub card_id: i64,
+    pub rating: u8,
+    pub rating_scale: String,
+    pub answer_mode: String,
+    #[serde(default)]
+    pub typed_answer: Option<String>,
+    #[serde(default)]
+    #[cfg_attr(feature = "ts-export", ts(type = "number | null"))]
+    pub time_taken_ms: Option<i64>,
+}
+
+/// Review response to frontend.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
+pub struct ReviewResponse {
+    pub new_state: CardState,
+    pub next_due: String,
+}
+
+/// Response from typed answer comparison.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts-export", derive(TS))]
+#[cfg_attr(feature = "ts-export", ts(export, export_to = "libs/shared-types/src/generated/"))]
+pub struct CompareAnswerResponse {
+    pub is_correct: bool,
+    pub similarity: f64,
+    pub matching_mode: String,
+    pub typed_normalized: String,
+    pub correct_normalized: String,
+    pub diff: Vec<DiffSegment>,
 }

@@ -12,6 +12,7 @@
     "frontend:test:coverage": "nx run frontend:test:coverage",
     "desktop:dev": "nx run desktop:dev",
     "desktop:build": "nx run desktop:build",
+    "generate:types": "TS_RS_EXPORT_DIR=\"$PWD\" cargo test -p flashcard-core --features ts-export",
     "ci": "pnpm frontend:test -- --run && pnpm frontend:build && cargo clippy --workspace -- -D warnings && cargo test --workspace"
   },
   "devDependencies": {

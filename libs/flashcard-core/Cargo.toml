@@ -9,6 +9,10 @@ authors.workspace = true
 serde.workspace = true
 chrono.workspace = true
 thiserror.workspace = true
+ts-rs = { version = "10", optional = true, features = ["chrono-impl"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+
+[features]
+ts-export = ["ts-rs"]

@@ -1,11 +1,11 @@
-import { useParams, Link } from 'react-router-dom';
 import { useDeckStats, useStudyStats, useCalendarData } from '../hooks/useStats';
 
-export function Stats() {
-  const { deckPath } = useParams<{ deckPath?: string }>();
-  const decodedPath = deckPath ? decodeURIComponent(deckPath) : undefined;
+interface StatsProps {
+  deckPath?: string;
+}
 
-  const { data: deckStats, isLoading: isDeckLoading } = useDeckStats(decodedPath);
+export function Stats({ deckPath }: StatsProps) {
+  const { data: deckStats, isLoading: isDeckLoading } = useDeckStats(deckPath);
   const { data: studyStats, isLoading: isStudyLoading } = useStudyStats();
   const { data: calendarData, isLoading: isCalendarLoading } = useCalendarData(90);
 
@@ -18,12 +18,7 @@ export function Stats() {
   return (
     <div className="stats-page">
       <div className="stats-header">
-        <h1>{decodedPath ? `Stats: ${decodedPath}` : 'Statistics'}</h1>
-        {decodedPath && (
-          <Link to="/stats" className="button button-secondary">
-            View All Stats
-          </Link>
-        )}
+        <h1>{deckPath ? `Stats: ${deckPath}` : 'Statistics'}</h1>
       </div>
 
       <div className="stats-grid">

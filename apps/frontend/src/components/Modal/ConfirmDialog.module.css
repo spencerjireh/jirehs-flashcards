@@ -1,0 +1,92 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(14, 16, 12, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s var(--ease-out) both;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-card, var(--bg-secondary));
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(223, 223, 193, 0.04);
+  padding: var(--space-xl);
+  animation: slideIn 0.2s var(--ease-out) both;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--text);
+  margin-bottom: var(--space-sm);
+}
+
+.message {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: var(--space-lg);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.btnCancel {
+  composes: btn;
+  color: var(--text-muted);
+}
+
+.btnCancel:hover {
+  background: var(--bg-tertiary);
+  color: var(--text);
+}
+
+.btnDanger {
+  composes: btn;
+  background: rgba(200, 60, 60, 0.15);
+  color: #e06060;
+}
+
+.btnDanger:hover {
+  background: rgba(200, 60, 60, 0.25);
+  color: #f07070;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
